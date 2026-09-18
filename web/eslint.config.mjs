@@ -24,6 +24,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vite build output from Playwright component tests — generated, not source.
+    "playwright/.cache/**",
+    "test-results/**",
+    "playwright-report/**",
   ]),
 ]);
 
