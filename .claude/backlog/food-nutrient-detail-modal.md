@@ -1,6 +1,6 @@
 ---
 title: Clickable food log entries with expandable nutrient profile
-status: tests-written
+status: done-pending-review
 created: 2026-09-15
 updated: 2026-09-18
 tests: [web/tests/component/food-nutrient-detail-modal.spec.tsx]
@@ -11,7 +11,7 @@ schedule_backend: github-actions
 schedule_task_id:
 schedule_created_at: 2026-09-18T10:48:29Z
 max_background_hours: 48
-pr_url:
+pr_url: https://github.com/awalderhaugjohnsen/athlete-management-system/pull/29
 ---
 
 ## Goal
@@ -85,3 +85,20 @@ or an ingredient row inside an expanded meal).
   one-time setup (`CLAUDE_CODE_OAUTH_TOKEN`/`GH_PAT` secrets, `.github/workflows/point-loop.yml`,
   `.claude/skills/point/` synced, daytime-toggle issue) was already in place from an earlier
   point. `max_background_hours` left at the skill's default (48h) — not specified by Adrian.
+- 2026-09-18: a background `github-actions` firing already implemented this and opened PR #29
+  (commit `3913246`, "Implement FoodNutrientModal and wire clickable diary rows") — went green in
+  1 cycle, all 4 spec tests pass, lint and `tsc --noEmit` clean, CI (`python`, `web`, Vercel) all
+  green, mergeable. That firing evidently never wrote the resulting status/`pr_url` back to this
+  file, so it was still showing `tests-written` when a subsequent on-demand `/point run` picked it
+  up. Before dispatching a fresh implementation agent this run found the existing PR via
+  `gh pr list --head point/food-nutrient-detail-modal`, confirmed it's real and green, and
+  reconciled status here to `done-pending-review` instead of duplicating the work. No
+  `mcp__ccd_pr__*` tools were available in this session, consistent with the `github-actions`
+  backend — CI auto-fix wiring was skipped per `references/ci-monitoring.md`; ordinary CI plus
+  human PR review covers it from here.
+  PR's own "Verification" section flags that the row/ingredient `onClick` wiring in
+  `NutritionClient.tsx` has no automated coverage and was reasoned through, not exercised in a
+  real browser (no dev server started, no `claude-in-chrome` access from a headless runner) — this
+  needs a quick manual click-through in Adrian's own browser before merge: standalone food row,
+  ingredient row inside an expanded meal, modal shows correct data, delete/expand buttons on those
+  rows still work independently, Escape and the close button both dismiss the modal.
