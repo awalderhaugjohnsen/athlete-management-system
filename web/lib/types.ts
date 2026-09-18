@@ -59,6 +59,20 @@ export interface CompletedActivity {
   activity_training_load: number | null;
 }
 
+// Mirrors migration 031 (completed_exercise_sets) — see .claude/backlog/per-exercise-progress-tab.md.
+export interface CompletedExerciseSet {
+  id: string;
+  date: string;
+  exercise_id: string | null;
+  display_name: string;
+  garmin_category: string | null;
+  set_index: number;
+  reps: number;
+  weight_kg: number;
+  prescribed_reps_min: number | null;
+  prescribed_reps_max: number | null;
+}
+
 export type SessionRequestDayOfWeek =
   | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
 export type SessionRequestType = "run" | "strength" | "cross" | "other";
