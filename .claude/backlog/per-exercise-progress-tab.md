@@ -7,10 +7,10 @@ tests: [web/tests/unit/exerciseProgress.spec.ts, web/tests/component/per-exercis
 touches: [web/app/(app)/report/ProgressTabs.tsx, web/app/(app)/report/page.tsx, web/app/(app)/report/ExerciseProgressTab.tsx, web/lib/exerciseProgress.ts, web/lib/types.ts]
 depends_on:
 attempts: 0
-schedule_backend:
+schedule_backend: github-actions
 schedule_task_id:
-schedule_created_at:
-max_background_hours:
+schedule_created_at: 2026-09-18T10:48:29Z
+max_background_hours: 48
 pr_url:
 ---
 
@@ -85,3 +85,7 @@ that same rendering approach rather than adding a dependency like recharts.
   (2) the tests don't verify the chart is built from the existing hand-rolled SVG machinery
   specifically (vs. some other rendering) — that's a code-structure constraint from the Goal
   section, better caught at code review than encoded as a runtime assertion.
+- 2026-09-18: tests-written PR merged (#26). Backgrounded on `github-actions` — the repo's
+  one-time setup (`CLAUDE_CODE_OAUTH_TOKEN`/`GH_PAT` secrets, `.github/workflows/point-loop.yml`,
+  `.claude/skills/point/` synced, daytime-toggle issue) was already in place from an earlier
+  point. `max_background_hours` left at the skill's default (48h) — not specified by Adrian.

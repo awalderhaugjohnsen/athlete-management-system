@@ -7,10 +7,10 @@ tests: [web/tests/component/sidebar-collapsed-mobile-gap.spec.tsx]
 touches: [web/app/globals.css]
 depends_on:
 attempts: 0
-schedule_backend:
+schedule_backend: github-actions
 schedule_task_id:
-schedule_created_at:
-max_background_hours:
+schedule_created_at: 2026-09-18T10:48:29Z
+max_background_hours: 48
 pr_url:
 ---
 
@@ -65,3 +65,7 @@ breakpoint.
   fail with the exact predicted wrong value (`60px` instead of `0px`), and the 2 no-regression
   tests for existing desktop behavior already pass — the expected mixed red/green state for a
   bug-fix spec, not "all red."
+- 2026-09-18: tests-written PR merged (#27). Backgrounded on `github-actions` — the repo's
+  one-time setup (`CLAUDE_CODE_OAUTH_TOKEN`/`GH_PAT` secrets, `.github/workflows/point-loop.yml`,
+  `.claude/skills/point/` synced, daytime-toggle issue) was already in place from an earlier
+  point. `max_background_hours` left at the skill's default (48h) — not specified by Adrian.

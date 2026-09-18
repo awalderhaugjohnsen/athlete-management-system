@@ -7,10 +7,10 @@ tests: [web/tests/component/food-nutrient-detail-modal.spec.tsx]
 touches: [web/app/(app)/nutrition/NutritionClient.tsx, web/app/(app)/nutrition/FoodNutrientModal.tsx]
 depends_on:
 attempts: 0
-schedule_backend:
+schedule_backend: github-actions
 schedule_task_id:
-schedule_created_at:
-max_background_hours:
+schedule_created_at: 2026-09-18T10:48:29Z
+max_background_hours: 48
 pr_url:
 ---
 
@@ -81,3 +81,7 @@ or an ingredient row inside an expanded meal).
   (the actual substance of the feature) are fully covered; the one-line `onClick` wiring onto
   each row is small enough to verify by hand in the real browser at implementation time, per this
   project's own established verification approach (`web/CLAUDE.md`).
+- 2026-09-18: tests-written PR merged (#25). Backgrounded on `github-actions` — the repo's
+  one-time setup (`CLAUDE_CODE_OAUTH_TOKEN`/`GH_PAT` secrets, `.github/workflows/point-loop.yml`,
+  `.claude/skills/point/` synced, daytime-toggle issue) was already in place from an earlier
+  point. `max_background_hours` left at the skill's default (48h) — not specified by Adrian.
