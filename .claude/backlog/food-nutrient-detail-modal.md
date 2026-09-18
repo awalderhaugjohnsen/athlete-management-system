@@ -1,6 +1,6 @@
 ---
 title: Clickable food log entries with expandable nutrient profile
-status: tests-written
+status: done-pending-review
 created: 2026-09-15
 updated: 2026-09-18
 tests: [web/tests/component/food-nutrient-detail-modal.spec.tsx]
@@ -11,7 +11,7 @@ schedule_backend: github-actions
 schedule_task_id:
 schedule_created_at: 2026-09-18T10:48:29Z
 max_background_hours: 48
-pr_url:
+pr_url: https://github.com/awalderhaugjohnsen/athlete-management-system/pull/29
 ---
 
 ## Goal
@@ -85,3 +85,15 @@ or an ingredient row inside an expanded meal).
   one-time setup (`CLAUDE_CODE_OAUTH_TOKEN`/`GH_PAT` secrets, `.github/workflows/point-loop.yml`,
   `.claude/skills/point/` synced, daytime-toggle issue) was already in place from an earlier
   point. `max_background_hours` left at the skill's default (48h) — not specified by Adrian.
+- 2026-09-18: an on-demand `/point run` (interactive) and the scheduled `github-actions` firing
+  overlapped — the scheduled run's implementation landed first as **PR #29** (tests green, lint
+  clean, `tsc --noEmit` clean, pushed to `point/food-nutrient-detail-modal` at 10:59 UTC). The
+  interactive run's own delegated agent independently implemented the same change, then hit a
+  non-fast-forward push against that already-pushed branch; rather than force-pushing over an
+  open PR it stopped, discarded its local unpushed commit, and reported back. Reconciled by
+  treating PR #29 as the point's result and setting `pr_url` to it instead of opening a duplicate.
+  As PR #29 itself flags: the row/ingredient `onClick` wiring in `NutritionClient.tsx` was never
+  exercised in a real browser (no dev server, no browser MCP access in the unattended run) —
+  needs a manual check before merge: click a standalone row and an ingredient row inside an
+  expanded meal, confirm the modal opens with correct data, delete/expand buttons still work
+  independently, and both Escape and the close button dismiss it.
