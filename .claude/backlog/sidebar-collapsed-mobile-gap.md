@@ -1,8 +1,8 @@
 ---
 title: Fix left-side gap when collapsed sidebar switches to mobile viewport
-status: tests-written
+status: in-progress
 created: 2026-09-15
-updated: 2026-09-18
+updated: 2026-09-19
 tests: [web/tests/component/sidebar-collapsed-mobile-gap.spec.tsx]
 touches: [web/app/globals.css]
 depends_on:
