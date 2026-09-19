@@ -1,6 +1,6 @@
 ---
 title: Clickable food log entries with expandable nutrient profile
-status: in-progress
+status: done-pending-review
 created: 2026-09-15
 updated: 2026-09-19
 tests: [web/tests/component/food-nutrient-detail-modal.spec.tsx]
@@ -11,7 +11,7 @@ schedule_backend: github-actions
 schedule_task_id:
 schedule_created_at: 2026-09-18T10:48:29Z
 max_background_hours: 48
-pr_url:
+pr_url: https://github.com/awalderhaugjohnsen/athlete-management-system/pull/29
 ---
 
 ## Goal
@@ -85,3 +85,20 @@ or an ingredient row inside an expanded meal).
   one-time setup (`CLAUDE_CODE_OAUTH_TOKEN`/`GH_PAT` secrets, `.github/workflows/point-loop.yml`,
   `.claude/skills/point/` synced, daytime-toggle issue) was already in place from an earlier
   point. `max_background_hours` left at the skill's default (48h) — not specified by Adrian.
+- 2026-09-19: an unrecorded background firing (shortly after the #25 merge, ~2026-09-18T11:00Z —
+  before this file's `schedule_created_at` timestamp was even written, so this must have been the
+  very first scheduled firing) had already implemented this point and opened PR #29, green on
+  all CI checks (`python`, `web`, Vercel), but the backlog file itself was never updated to
+  `done-pending-review` — status was still `tests-written` with no `pr_url` when a manual
+  `/point run` was invoked here. Root cause not confirmed (crash after push but before the backlog
+  commit, or a race with another concurrent firing), but worth watching for on the other two
+  points backgrounded at the same time — check their PRs directly, not just backlog status.
+  This `run` invocation independently re-implemented the same feature from scratch in a fresh
+  worktree (not knowing #29 existed), got all 4 tests green on the first cycle, lint/type-check
+  clean, then discovered the already-pushed, already-green PR #29 on the shared remote branch
+  when its own push was rejected as non-fast-forward. Correctly did not force-push a duplicate
+  over already-green work. That redundant local worktree was discarded. Reconciling: `pr_url` set
+  to #29, status set to `done-pending-review` directly (skipping a second PR) since #29 already
+  satisfies every acceptance criterion with the same test file and passing CI. PR #29 itself
+  flags, honestly, that real-browser verification of the row-click wiring was never done (headless
+  CI runner, no dev server) — recommend Adrian do that quick manual check before merging.
