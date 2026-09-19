@@ -46,7 +46,13 @@ export async function signUp(formData: FormData) {
   const password = formData.get("password") as string;
 
   const supabase = await createAuthClient();
-  const { error } = await supabase.auth.signUp({ email, password });
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/setup`,
+    },
+  });
 
   if (error) {
     redirect("/login?mode=signup&error=" + encodeURIComponent(error.message));
