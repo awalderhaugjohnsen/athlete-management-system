@@ -7,6 +7,7 @@ import { WeekStrip } from "./WeekStrip";
 import { WeightCard } from "./WeightCard";
 import { DayEnergyBalance } from "./DayEnergyBalance";
 import { CustomFoodModal, type CustomFood } from "./CustomFoodModal";
+import { FoodNutrientModal, type FoodNutrientEntry } from "./FoodNutrientModal";
 import { MealBuilderModal, type MealTemplate, type MealDraft } from "./MealBuilderModal";
 import { MealManagerModal } from "./MealManagerModal";
 import { WeeklyMealPlanModal } from "./WeeklyMealPlanModal";
@@ -244,6 +245,59 @@ function getMicroGroups(t: Dictionary["nutrition"]) {
 
 function round1(n: number) { return Math.round(n * 10) / 10; }
 
+// Maps a standalone diary entry onto the FoodNutrientModal's prop shape. DiaryEntry already
+// carries every micronutrient field the modal renders; missing ones (undefined) are normalized
+// to null so FoodNutrientModal's own "—" placeholder handling picks them up uniformly.
+function diaryEntryToNutrientEntry(entry: DiaryEntry): FoodNutrientEntry {
+  return {
+    food_name: entry.food_name,
+    calories: entry.calories,
+    protein_g: entry.protein_g,
+    carbs_g: entry.carbs_g,
+    fat_g: entry.fat_g,
+    fiber_g: entry.fiber_g ?? null,
+    sugar_g: entry.sugar_g ?? null,
+    sodium_mg: entry.sodium_mg ?? null,
+    saturated_fat_g: entry.saturated_fat_g ?? null,
+    monounsaturated_fat_g: entry.monounsaturated_fat_g ?? null,
+    polyunsaturated_fat_g: entry.polyunsaturated_fat_g ?? null,
+    omega3_g: entry.omega3_g ?? null,
+    cholesterol_mg: entry.cholesterol_mg ?? null,
+    vitamin_a_mcg: entry.vitamin_a_mcg ?? null,
+    vitamin_c_mg: entry.vitamin_c_mg ?? null,
+    vitamin_d_mcg: entry.vitamin_d_mcg ?? null,
+    vitamin_e_mg: entry.vitamin_e_mg ?? null,
+    vitamin_k_mcg: entry.vitamin_k_mcg ?? null,
+    thiamin_mg: entry.thiamin_mg ?? null,
+    riboflavin_mg: entry.riboflavin_mg ?? null,
+    niacin_mg: entry.niacin_mg ?? null,
+    vitamin_b6_mg: entry.vitamin_b6_mg ?? null,
+    folate_mcg: entry.folate_mcg ?? null,
+    vitamin_b12_mcg: entry.vitamin_b12_mcg ?? null,
+    calcium_mg: entry.calcium_mg ?? null,
+    iron_mg: entry.iron_mg ?? null,
+    magnesium_mg: entry.magnesium_mg ?? null,
+    phosphorus_mg: entry.phosphorus_mg ?? null,
+    potassium_mg: entry.potassium_mg ?? null,
+    zinc_mg: entry.zinc_mg ?? null,
+    copper_mg: entry.copper_mg ?? null,
+  };
+}
+
+// Ingredient rows inside an expanded meal only ever carry the subset of fields built at meal-log
+// time (see how `meal_items` gets constructed) — no micronutrient columns. That's expected: the
+// rest render as "—" via FoodNutrientModal's own missing-field handling, not backfilled here.
+function mealItemToNutrientEntry(item: NonNullable<DiaryEntry["meal_items"]>[number]): FoodNutrientEntry {
+  return {
+    food_name: item.food_name,
+    calories: item.calories,
+    protein_g: item.protein_g,
+    carbs_g: item.carbs_g,
+    fat_g: item.fat_g,
+    fiber_g: item.fiber_g ?? null,
+  };
+}
+
 function computeTotals(entries: DiaryEntry[]) {
   const food = entries.filter(e => e.meal_type !== "water");
   const sum = (key: keyof DiaryEntry) =>
@@ -418,6 +472,9 @@ export function NutritionClient({
   const [date, setDate] = useState(initialDate);
   const [entries, setEntries] = useState<DiaryEntry[]>(initialEntries);
   const [loadingEntries, setLoadingEntries] = useState(false);
+
+  // Nutrient detail modal state — which entry (standalone row or meal ingredient) is open, if any
+  const [nutrientModalEntry, setNutrientModalEntry] = useState<FoodNutrientEntry | null>(null);
 
   // Search modal state
   const [searchOpen, setSearchOpen] = useState(false);
@@ -1583,16 +1640,28 @@ export function NutritionClient({
                     <div key={entry.id} style={{ borderBottom: "1px solid rgba(var(--overlay-rgb),.04)" }}>
                       <div
                         className="ntr-food-row"
-                        style={{ display: "flex", alignItems: "center", padding: "8px 14px" }}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setNutrientModalEntry(diaryEntryToNutrientEntry(entry))}
+                        onKeyDown={e => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setNutrientModalEntry(diaryEntryToNutrientEntry(entry));
+                          }
+                        }}
+                        style={{ display: "flex", alignItems: "center", padding: "8px 14px", cursor: "pointer" }}
                       >
                         {/* Expand toggle for meal entries */}
                         {isMeal ? (
                           <button
-                            onClick={() => setExpandedEntries(prev => {
-                              const next = new Set(prev);
-                              if (next.has(entry.id)) next.delete(entry.id); else next.add(entry.id);
-                              return next;
-                            })}
+                            onClick={e => {
+                              e.stopPropagation();
+                              setExpandedEntries(prev => {
+                                const next = new Set(prev);
+                                if (next.has(entry.id)) next.delete(entry.id); else next.add(entry.id);
+                                return next;
+                              });
+                            }}
                             style={{ background: "none", border: "none", color: "var(--amber)", cursor: "pointer", fontSize: 13, padding: "0 4px 0 0", flexShrink: 0, transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform .15s", lineHeight: 1 }}
                             title={isExpanded ? nt.diary.collapseIngredients : nt.diary.expandIngredients}
                           >›</button>
@@ -1623,7 +1692,7 @@ export function NutritionClient({
                           {entry.calories}
                         </div>
                         <button
-                          onClick={() => handleDelete(entry.id)}
+                          onClick={e => { e.stopPropagation(); handleDelete(entry.id); }}
                           className="ntr-del-btn"
                           style={{ background: "none", border: "none", cursor: "pointer", color: "var(--dim)", fontSize: 14, padding: "0 0 0 8px", lineHeight: 1, opacity: 0 }}
                         >✕</button>
@@ -1632,7 +1701,19 @@ export function NutritionClient({
                       {isMeal && isExpanded && (
                         <div style={{ background: "rgba(var(--amber-rgb),.04)", borderTop: "1px solid rgba(var(--amber-rgb),.1)", padding: "6px 14px 8px 32px" }}>
                           {entry.meal_items!.map((item, idx) => (
-                            <div key={idx} style={{ display: "flex", alignItems: "flex-start", padding: "4px 0", borderBottom: idx < entry.meal_items!.length - 1 ? "1px solid rgba(var(--overlay-rgb),.04)" : "none", gap: 8 }}>
+                            <div
+                              key={idx}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setNutrientModalEntry(mealItemToNutrientEntry(item))}
+                              onKeyDown={e => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setNutrientModalEntry(mealItemToNutrientEntry(item));
+                                }
+                              }}
+                              style={{ display: "flex", alignItems: "flex-start", padding: "4px 0", borderBottom: idx < entry.meal_items!.length - 1 ? "1px solid rgba(var(--overlay-rgb),.04)" : "none", gap: 8, cursor: "pointer" }}
+                            >
                               <div style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 500, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "break-word", color: "var(--muted)" }}>
                                 {item.food_name}
                               </div>
@@ -2480,6 +2561,14 @@ export function NutritionClient({
             logMealTemplate(meal);
           }}
           onClose={() => { setMealBuilderOpen(false); setMealBuilderDraft(null); }}
+        />
+      )}
+
+      {/* ── Food nutrient detail modal ──────────────────────────────────── */}
+      {nutrientModalEntry && (
+        <FoodNutrientModal
+          entry={nutrientModalEntry}
+          onClose={() => setNutrientModalEntry(null)}
         />
       )}
 

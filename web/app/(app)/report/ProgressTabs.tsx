@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import type { CompletedActivity } from "@/lib/types";
+import type { CompletedActivity, CompletedExerciseSet, ScheduledDay } from "@/lib/types";
 import { ActivityHeatmap } from "../ActivityHeatmap";
+import { ExerciseProgressTab } from "./ExerciseProgressTab";
 import { useLanguage, useT } from "@/lib/i18n/LanguageContext";
 import { localeTag, type Language } from "@/lib/i18n/language";
 
@@ -901,7 +902,7 @@ function WeeklyKpiDeltas({ delta }: { delta: WeeklyKpiDelta }) {
   );
 }
 
-type ReportTab = "week" | "trends" | "analysis";
+type ReportTab = "week" | "trends" | "analysis" | "exercises";
 
 function TabBtn({ id, label, activeTab, onSelect }: { id: ReportTab; label: string; activeTab: ReportTab; onSelect: (id: ReportTab) => void }) {
   return (
@@ -918,6 +919,7 @@ function TabBtn({ id, label, activeTab, onSelect }: { id: ReportTab; label: stri
 
 export default function ProgressTabs({
   weeklyReview, trendSeries, analysisHtml, planningHtml, latestAnalysisDate, events, completedActivities,
+  completedExerciseSets, scheduledDays,
 }: {
   weeklyReview: { summary_html: string; week_start: string; kpi_delta?: WeeklyKpiDelta | null } | null;
   trendSeries: TrendSeries[];
@@ -926,6 +928,8 @@ export default function ProgressTabs({
   latestAnalysisDate: string | null;
   events: RaceEvent[];
   completedActivities: CompletedActivity[];
+  completedExerciseSets: CompletedExerciseSet[];
+  scheduledDays: ScheduledDay[];
 }) {
   const t = useT().report;
   const [language] = useLanguage();
@@ -958,6 +962,7 @@ export default function ProgressTabs({
       <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1px solid var(--border)" }}>
         <TabBtn id="week" label={t.tabs.thisWeek} activeTab={tab} onSelect={setTab} />
         <TabBtn id="trends" label={t.tabs.trends} activeTab={tab} onSelect={setTab} />
+        <TabBtn id="exercises" label={t.tabs.exercises} activeTab={tab} onSelect={setTab} />
         {hasAnalysis && <TabBtn id="analysis" label={t.tabs.seasonAnalysis} activeTab={tab} onSelect={setTab} />}
       </div>
 
@@ -1016,6 +1021,14 @@ export default function ProgressTabs({
             </p>
           </div>
         )
+      )}
+
+      {tab === "exercises" && (
+        <ExerciseProgressTab
+          completedSets={completedExerciseSets}
+          completedActivities={completedActivities}
+          scheduledDays={scheduledDays}
+        />
       )}
 
       {tab === "analysis" && hasAnalysis && (

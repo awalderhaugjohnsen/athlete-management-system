@@ -8,6 +8,14 @@ export const report = {
     thisWeek: "Denne uken",
     trends: "Trender",
     seasonAnalysis: "Sesonganalyse",
+    exercises: "Øvelser",
+  },
+  exercises: {
+    strengthTitle: "Styrkeøvelser",
+    runningTitle: "Løpeøktstyper",
+    noExercises: "Ingen fullførte styrkesett ennå.",
+    noSessionTypes: "Ingen fullførte løpeturer matchet til en planlagt økttype ennå.",
+    onlyOneSession: "Bare én registrert økt så langt ({value}) — sjekk tilbake etter neste økt.",
   },
   week: {
     weekOf: "Uke fra {date}",

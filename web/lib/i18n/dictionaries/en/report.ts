@@ -11,6 +11,14 @@ export const report = {
     thisWeek: "This week",
     trends: "Trends",
     seasonAnalysis: "Season analysis",
+    exercises: "Exercises",
+  },
+  exercises: {
+    strengthTitle: "Strength exercises",
+    runningTitle: "Running session types",
+    noExercises: "No completed strength sets yet.",
+    noSessionTypes: "No completed runs matched to a scheduled session type yet.",
+    onlyOneSession: "Only one logged session so far ({value}) — check back after your next one.",
   },
   week: {
     weekOf: "Week of {date}",
