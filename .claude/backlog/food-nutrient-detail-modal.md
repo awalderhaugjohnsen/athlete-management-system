@@ -1,6 +1,6 @@
 ---
 title: Clickable food log entries with expandable nutrient profile
-status: tests-written
+status: done-pending-review
 created: 2026-09-15
 updated: 2026-09-18
 tests: [web/tests/component/food-nutrient-detail-modal.spec.tsx]
@@ -11,7 +11,7 @@ schedule_backend: github-actions
 schedule_task_id:
 schedule_created_at: 2026-09-18T10:48:29Z
 max_background_hours: 48
-pr_url:
+pr_url: https://github.com/awalderhaugjohnsen/athlete-management-system/pull/29
 ---
 
 ## Goal
@@ -51,6 +51,21 @@ or an ingredient row inside an expanded meal).
 
 ## Notes
 
+- 2026-09-18: implemented and PR opened (#29). Replaced the `FoodNutrientModal` stub with a
+  working centered overlay (reusing the `ExpandedChart`/food-search fixed-overlay idiom): macros,
+  fat subtypes, sodium, vitamins and minerals each render via a `data-testid="nutrient-<field>"`
+  row, with every optional field sourcing its label from the existing `nt.macroLabels` /
+  `nt.micronutrients` dictionary entries (no new i18n strings needed — the labels used by the
+  existing micronutrients card already covered every field, in both `en` and `no`). Null/missing
+  fields render "—", not "0". Wired click + Enter/Space handling onto the standalone diary row and
+  each meal-ingredient row in `NutritionClient.tsx`, with `stopPropagation` added to the existing
+  delete and meal-expand-toggle buttons so they still work independently of the new row click.
+  All 4 component tests passed on the first implementation cycle; `tsc --noEmit` and `npm run
+  lint` also clean. As anticipated in the 2026-09-16 note, the row-click wiring itself has no
+  automated test (documented as an explicit scope decision, not an oversight) and was **not**
+  verified in a real browser this run — no `claude-in-chrome` MCP access in this headless
+  environment and no dev server was started, per project convention. Flagged in the PR for a
+  manual check before merge.
 - 2026-09-15: created via `/point new`. Confirmed via codebase exploration that no nutrient data
   is missing — this is UI-only. No existing drawer/slide-in component in the app; the idiom to
   reuse is the centered fixed-overlay pattern already used twice (`ExpandedChart`, food-search

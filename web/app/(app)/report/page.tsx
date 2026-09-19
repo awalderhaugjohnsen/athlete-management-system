@@ -1,7 +1,7 @@
 import { createServerClient, getUserId } from "@/lib/supabase-server";
 import { getAthleteProfile } from "@/app/actions/athlete-profile";
 import { daysAgoISO } from "@/lib/dates";
-import type { CompletedActivity } from "@/lib/types";
+import type { CompletedActivity, CompletedExerciseSet, ScheduledDay } from "@/lib/types";
 import { getAuthenticatedLanguage } from "@/lib/i18n/getServerLanguage";
 import { dictionaries } from "@/lib/i18n/dictionaries";
 import ProgressTabs, { type TrendSeries, type ZoneBand, type ZoneLine } from "./ProgressTabs";
@@ -14,7 +14,10 @@ export default async function ProgressPage() {
 
   const activityHistoryStart = daysAgoISO(365);
 
-  const [latestRes, dailyMetricsRes, fallbackTrendRes, weeklyReviewRes, athleteProfile, completedActivitiesRes, benchRes] = await Promise.all([
+  const [
+    latestRes, dailyMetricsRes, fallbackTrendRes, weeklyReviewRes, athleteProfile,
+    completedActivitiesRes, benchRes, completedExerciseSetsRes, scheduledDaysRes,
+  ] = await Promise.all([
     sb
       .from("analyses")
       .select("analysis_html, planning_html, report_date")
@@ -65,10 +68,29 @@ export default async function ProgressPage() {
       .select("report_date, bench_e1rm_kg")
       .eq("user_id", uid)
       .order("report_date", { ascending: true }),
+
+    // Per-exercise progress tab (migration 031) — not queried anywhere else in web/.
+    sb
+      .from("completed_exercise_sets")
+      .select("*")
+      .eq("user_id", uid)
+      .gte("date", activityHistoryStart),
+
+    // Same window as completed_activities above — used to derive each completed run's
+    // session_type by matching it to the scheduled_days row for the same date. Not scoped
+    // to a single plan_id: a full year of history can span several regenerated plans, and
+    // the date is what a completed run actually matches against.
+    sb
+      .from("scheduled_days")
+      .select("*")
+      .eq("user_id", uid)
+      .gte("date", activityHistoryStart),
   ]);
 
   const latest = latestRes.data?.[0] ?? null;
   const completedActivities: CompletedActivity[] = completedActivitiesRes.data ?? [];
+  const completedExerciseSets: CompletedExerciseSet[] = completedExerciseSetsRes.data ?? [];
+  const scheduledDays: ScheduledDay[] = scheduledDaysRes.data ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dailyRows: Record<string, any>[] = dailyMetricsRes.data ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -493,6 +515,8 @@ export default async function ProgressPage() {
         latestAnalysisDate={latest?.report_date ?? null}
         events={events}
         completedActivities={completedActivities}
+        completedExerciseSets={completedExerciseSets}
+        scheduledDays={scheduledDays}
       />
     </div>
   );
