@@ -66,11 +66,22 @@ step 8 in `SKILL.md`), check whether the resolved base has moved since this bran
 
 ## Concurrency guard
 
-Before doing anything else, `run` checks: is status already `in-progress`? If so, compare
-`updated` against now. Within the last 30 minutes → assume another invocation (manual or
-scheduled) is genuinely mid-loop right now, and stop without touching anything. Older than that →
-treat it as a crashed or interrupted run rather than a live one, and proceed normally (this
-invocation takes over).
+Before doing anything else, `run` fetches/pulls latest `main`, then checks: is status already
+`in-progress`? If so, compare `updated` against now. Within the last 30 minutes → assume another
+invocation (manual or scheduled) is genuinely mid-loop right now, and stop without touching
+anything. Older than that → treat it as a crashed or interrupted run rather than a live one, and
+proceed normally (this invocation takes over).
+
+This guard only works if entering `in-progress` is pushed to `main` immediately, not deferred
+until the point finishes — see `SKILL.md` Run step 5. A `github-actions` firing and a separate
+interactive `run` each start from their own checkout; if the first invocation's `in-progress`
+marker sits uncommitted or unpushed while it works, the second invocation's fetch in this step
+still sees the last-pushed status (`tests-written`/`waiting`), finds the point "eligible," and
+starts on it too — both then implement the same point independently and race to push. This
+happened in practice (see the `food-nutrient-detail-modal` and `per-exercise-progress-tab`
+backlog notes from 2026-09-18/19): neither invocation was wrong to proceed given what it could
+see, the marker just wasn't visible yet. Pushing it as its own commit *before* dispatching the
+worktree agent closes that window.
 
 ## The honest limit, and why it's fine to automate anyway
 

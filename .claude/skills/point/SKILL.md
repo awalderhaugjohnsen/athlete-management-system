@@ -132,9 +132,11 @@ tell the user why rather than retrying blindly.
    background duration without reaching a terminal state — needs human review"), delete
    `schedule_task_id` if one is set, stop. This check itself must be a single cheap read of the
    backlog file's frontmatter — no codebase or test access yet.
-2. **Concurrency guard:** if status is already `in-progress` and `updated` is within the last
-   30 minutes, stop — another invocation is very likely already working on this point. If
-   `updated` is older than that, treat it as a crashed or interrupted run and resume it.
+2. **Concurrency guard:** fetch/pull the latest `main` first — this check is only meaningful
+   against the shared remote state, not a possibly-stale local checkout. Then: if status is
+   already `in-progress` and `updated` is within the last 30 minutes, stop — another invocation
+   is very likely already working on this point. If `updated` is older than that, treat it as a
+   crashed or interrupted run and resume it.
 3. **Resolve the dependency**, per `references/dependencies.md`: this is also a cheap status-file
    read, not a reason to load the full codebase — do it before any expensive work. If `depends_on`
    is unset, branch off `main` as usual. If set, decide the branch base (main, or the dependency's
@@ -148,7 +150,11 @@ tell the user why rather than retrying blindly.
    runs. This keeps the (possibly several file-reads-and-test-runs-deep) implement loop out of
    whatever session called `run`, whether that's an interactive session the user is actively
    using for something else or a background firing. See `references/context-control.md` for why
-   this matters even for on-demand runs. Set status `in-progress` before dispatching.
+   this matters even for on-demand runs. Set status `in-progress` (with `updated` set to now) and
+   **commit and push that single change to `main` immediately, before dispatching** — its own
+   small commit, distinct from the point's eventual implementation commit. This is what makes the
+   concurrency guard in step 2 actually visible to any other invocation (a different scheduled
+   firing, or a separate interactive session) instead of only to this one's local checkout.
 6. Inside that delegated call: run the failing tests first to reconfirm current state, then
    implement the minimal code to pass them, re-running after each change with the project's
    fast/quiet test invocation, not its verbose default — see `references/context-control.md`.
