@@ -1,8 +1,8 @@
 ---
 title: Per-exercise and per-running-session-type progress tab
-status: tests-written
+status: done-pending-review
 created: 2026-09-15
-updated: 2026-09-18
+updated: 2026-09-19
 tests: [web/tests/unit/exerciseProgress.spec.ts, web/tests/component/per-exercise-progress-tab.spec.tsx]
 touches: [web/app/(app)/report/ProgressTabs.tsx, web/app/(app)/report/page.tsx, web/app/(app)/report/ExerciseProgressTab.tsx, web/lib/exerciseProgress.ts, web/lib/types.ts]
 depends_on:
@@ -11,7 +11,7 @@ schedule_backend: github-actions
 schedule_task_id:
 schedule_created_at: 2026-09-18T10:48:29Z
 max_background_hours: 48
-pr_url:
+pr_url: https://github.com/awalderhaugjohnsen/athlete-management-system/pull/30
 ---
 
 ## Goal
@@ -89,3 +89,11 @@ that same rendering approach rather than adding a dependency like recharts.
   one-time setup (`CLAUDE_CODE_OAUTH_TOKEN`/`GH_PAT` secrets, `.github/workflows/point-loop.yml`,
   `.claude/skills/point/` synced, daytime-toggle issue) was already in place from an earlier
   point. `max_background_hours` left at the skill's default (48h) — not specified by Adrian.
+- 2026-09-19: discovered while reconciling a sibling point (`food-nutrient-detail-modal`) that
+  the same gap applies here — an unrecorded background firing shortly after the #26 merge had
+  already implemented this point and opened PR #30 (green on `python`/`web`/Vercel CI,
+  mergeable), but the backlog file was never updated to `done-pending-review`. Reconciling now
+  without re-running: `pr_url` set to #30, status set to `done-pending-review` directly. Did not
+  re-inspect the PR's diff in depth — only confirmed it targets this branch and CI is green;
+  Adrian should review the actual chart/derivation logic against the two scope notes above
+  (metric-format looseness, SVG-machinery-reuse not runtime-checked) as normal PR review.

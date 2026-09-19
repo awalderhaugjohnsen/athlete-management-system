@@ -174,7 +174,9 @@ html.sb-collapsed-init .sidebar .sb-brand-text { display: none; }
 html.sb-collapsed-init .sidebar .sb-brand { justify-content: center; }
 html.sb-collapsed-init .sidebar .sb-item { justify-content: center; gap: 0; padding: 9px; }
 html.sb-collapsed-init .sidebar .sb-label { opacity: 0; width: 0; overflow: hidden; pointer-events: none; }
-html.sb-collapsed-init .main-area { margin-left: 60px; }
+@media (min-width: 769px) {
+  html.sb-collapsed-init .main-area { margin-left: 60px; }
+}
 
 .sb-brand {
   padding: 16px 14px; min-height: 60px;
@@ -239,7 +241,9 @@ html.sb-collapsed-init .main-area { margin-left: 60px; }
   margin-left: 220px;
   transition: margin-left .2s cubic-bezier(.4,0,.2,1);
 }
-.app-shell:has(.sb-collapsed) .main-area { margin-left: 60px; }
+@media (min-width: 769px) {
+  .app-shell:has(.sb-collapsed) .main-area { margin-left: 60px; }
+}
 
 /* Mobile: sidebar → slim top bar + fixed bottom tab bar */
 @media (max-width: 768px) {
