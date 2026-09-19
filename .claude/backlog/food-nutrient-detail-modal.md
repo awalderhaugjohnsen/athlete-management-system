@@ -1,8 +1,8 @@
 ---
 title: Clickable food log entries with expandable nutrient profile
-status: tests-written
+status: in-progress
 created: 2026-09-15
-updated: 2026-09-18
+updated: 2026-09-19
 tests: [web/tests/component/food-nutrient-detail-modal.spec.tsx]
 touches: [web/app/(app)/nutrition/NutritionClient.tsx, web/app/(app)/nutrition/FoodNutrientModal.tsx]
 depends_on:
