@@ -1,6 +1,6 @@
 ---
 title: Fix left-side gap when collapsed sidebar switches to mobile viewport
-status: in-progress
+status: done-pending-review
 created: 2026-09-15
 updated: 2026-09-19
 tests: [web/tests/component/sidebar-collapsed-mobile-gap.spec.tsx]
@@ -11,7 +11,7 @@ schedule_backend: github-actions
 schedule_task_id:
 schedule_created_at: 2026-09-18T10:48:29Z
 max_background_hours: 48
-pr_url:
+pr_url: https://github.com/awalderhaugjohnsen/athlete-management-system/pull/34
 ---
 
 ## Goal
@@ -33,15 +33,15 @@ breakpoint.
 
 ## Acceptance criteria
 
-- [ ] With the sidebar collapsed on desktop, resizing the viewport to ≤768px in the same session
+- [x] With the sidebar collapsed on desktop, resizing the viewport to ≤768px in the same session
   (no reload) results in `.main-area` having no left margin/gap — content starts flush at the left
   edge, matching the normal mobile layout.
-- [ ] Loading the app fresh at a ≤768px viewport when `sb-collapsed` was persisted from a prior
+- [x] Loading the app fresh at a ≤768px viewport when `sb-collapsed` was persisted from a prior
   desktop session also results in no left-side gap (covers the `html.sb-collapsed-init`
   pre-hydration case, not just the live-resize case).
-- [ ] Desktop behavior above 768px is unchanged: collapsed sidebar still yields `margin-left: 60px`
+- [x] Desktop behavior above 768px is unchanged: collapsed sidebar still yields `margin-left: 60px`
   on `.main-area`, expanded sidebar still yields the normal (non-collapsed) margin.
-- [ ] The fix is expressed as a CSS specificity/scoping correction (e.g. scoping the `:has()` rule
+- [x] The fix is expressed as a CSS specificity/scoping correction (e.g. scoping the `:has()` rule
   to a min-width media query, or adding an explicit higher-specificity mobile override) rather than
   removing the `sb-collapsed` class tracking mechanism itself.
 
@@ -69,3 +69,11 @@ breakpoint.
   one-time setup (`CLAUDE_CODE_OAUTH_TOKEN`/`GH_PAT` secrets, `.github/workflows/point-loop.yml`,
   `.claude/skills/point/` synced, daytime-toggle issue) was already in place from an earlier
   point. `max_background_hours` left at the skill's default (48h) — not specified by Adrian.
+- 2026-09-19: implemented and PR opened (#34). Worktree isolation was unavailable in this
+  runner's checkout (git config has conditional `includeIf` entries the isolation tooling can't
+  resolve a filter driver for), so the implement agent worked directly on branch
+  `point/sidebar-collapsed-mobile-gap` in the shared checkout instead — acceptable here since
+  this is an unattended `github-actions` firing with no concurrent interactive session to
+  protect. Fix: both `margin-left: 60px` rules (`.app-shell:has(.sb-collapsed) .main-area` and
+  `html.sb-collapsed-init .main-area`) wrapped in `@media (min-width: 769px)` so they never apply
+  at ≤768px. 1 implement/test cycle; tests, lint, and type-check all green.
