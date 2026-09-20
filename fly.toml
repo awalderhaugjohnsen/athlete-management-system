@@ -1,0 +1,26 @@
+# Background worker: queue processing, KPI sync, history sync — replaces the
+# macOS LaunchAgents in scripts/. No [http_service]/[[services]] block on purpose:
+# this isn't reachable from the internet, it just needs to keep running.
+app = "ams-worker-awj"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Garmin OAuth token cache (GARTH_HOME, services/garmin/client.py) and the
+  # KPI-sync throttle stamp (cli/ams.py's _SYNC_STAMP) both resolve off $HOME —
+  # redirecting it onto the mounted volume is what makes them survive restarts
+  # instead of re-authenticating against Garmin from scratch every deploy.
+  HOME = "/data"
+
+[[mounts]]
+  source = "ams_worker_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+[[restart]]
+  policy = "always"
