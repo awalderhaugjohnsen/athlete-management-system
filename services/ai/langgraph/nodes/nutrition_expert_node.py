@@ -28,28 +28,26 @@ from .tool_calling_helper import handle_tool_calling_in_node
 logger = logging.getLogger(__name__)
 
 NUTRITION_SYSTEM_PROMPT_BASE = """## Goal
-Analyze the athlete's nutritional state by comparing actual food intake (MyFitnessPal) against
-training energy demands (Garmin). Surface gaps, patterns, and body composition signals for downstream planners.
+Analyze the athlete's nutritional state from training energy demands (Garmin). Surface energy
+balance patterns, body composition signals, and caloric demand forecasts for downstream planners.
 
 ## Principles
 - Evidence-based: Every inference must be backed by a specific data point from the summary.
-- Gap-focused: The core analytical task is intake vs expenditure. When MFP data is present, lead with this.
-- Load-coupled: Interpret intake in the context of training load — a rest-day deficit is different from a hard-session deficit.
+- Load-coupled: Interpret expenditure in the context of training load — a rest-day pattern is
+  different from a hard-session pattern.
 - Non-prescriptive at this stage: Surface signals and implications; the nutrition planner acts on them.
-- MFP absent: If MyFitnessPal is not connected, work from Garmin-side signals only (body comp, body battery,
-  expenditure trends) and flag that intake data is unavailable.
+- No intake data: There is no logged food-intake source. Work from Garmin-side signals only
+  (body comp, body battery, expenditure trends) and flag that intake data is unavailable.
 
 ## Domains
-1. **Caloric Balance**: Actual intake (MFP) vs total expenditure (BMR + active, Garmin). Chronic surplus/deficit?
-2. **Macro Composition**: Protein adequacy for training load, carb availability for session intensity.
-3. **Body Composition Trajectory**: Weight and body-fat trending aligned with current training phase?
-4. **Energy Availability**: Body battery as a proxy for between-session fueling adequacy.
-5. **Meal Timing Signals**: Any notable patterns (skipped meals, very late eating) visible in MFP meal breakdown.
-6. **Caloric Demand Forecast**: Given training load trends, what demand level does the next block require?"""
+1. **Caloric Demand**: Total expenditure (BMR + active, Garmin). Trend over time.
+2. **Body Composition Trajectory**: Weight and body-fat trending aligned with current training phase?
+3. **Energy Availability**: Body battery as a proxy for between-session fueling adequacy.
+4. **Caloric Demand Forecast**: Given training load trends, what demand level does the next block require?"""
 
 NUTRITION_USER_PROMPT = """## Task
-Analyze the dual-source nutrition summary (Garmin expenditure + MFP intake) to surface fueling gaps,
-energy balance patterns, macro adequacy, and body composition signals.
+Analyze the Garmin expenditure summary to surface energy balance patterns, expenditure trends,
+and body composition signals.
 
 ## Constraints
 - Focus ONLY on nutritional signals.
@@ -57,7 +55,7 @@ energy balance patterns, macro adequacy, and body composition signals.
 - Do NOT analyze training load patterns (Metrics Expert's job).
 - Do NOT infer HRV or physiological adaptation (Physiology Expert's job).
 - Do NOT prescribe specific meals, exact macro targets, or food choices — that is the planner's job.
-- If MFP is NOT AVAILABLE, clearly state this in each field and work from Garmin-side signals only.
+- There is no intake data available — state this clearly and work from Garmin-side signals only.
 
 ## Inputs
 ### Nutrition Summary
@@ -69,28 +67,28 @@ energy balance patterns, macro adequacy, and body composition signals.
 
 ## Output Requirements
 Produce 3 structured fields. For EACH field:
-- **Signals**: what the data shows (lead with intake vs expenditure gap if MFP available)
-- **Evidence**: specific numbers, date ranges, macro values, deficits/surpluses in kcal
+- **Signals**: what the data shows
+- **Evidence**: specific numbers, date ranges, deficits/surpluses in kcal
 - **Implications**: what this means for this receiver's decisions
-- **Uncertainty**: MFP coverage gaps, Garmin estimation error, inference limitations
+- **Uncertainty**: Garmin estimation error, inference limitations from expenditure-only data
 
 ### 1. `for_synthesis` (Comprehensive Report)
 - **Goal**: Describe the athlete's nutritional reality — are they fueling adequately for their training?
-- **Lead with**: caloric balance, protein adequacy, body comp trajectory.
+- **Lead with**: caloric demand, body comp trajectory.
 
 ### 2. `for_season_planner` (12-24 Weeks)
-- **Goal**: Identify the nutritional phase the athlete is currently in (surplus/deficit/maintenance)
-  and whether it aligns with the training phase.
-- **Lead with**: rate of body comp change, estimated caloric offset, phase recommendation.
+- **Goal**: Identify the nutritional phase the athlete is likely in (surplus/deficit/maintenance,
+  inferred from body comp trend) and whether it aligns with the training phase.
+- **Lead with**: rate of body comp change, phase recommendation.
 
 ### 3. `for_weekly_planner` (Next 28 Days)
 - **Goal**: Flag the most critical nutrition signals for the next 4 weeks of training.
-- **Lead with**: acute under/over-fueling, recovery nutrition gaps, pre-competition loading needs."""
+- **Lead with**: acute under/over-fueling risk (from body battery + expenditure trend), recovery
+  nutrition gaps, pre-competition loading needs."""
 
 NUTRITION_FINAL_CHECKLIST = """
 ## Final Checklist
-- If MFP data is present: lead every field with the intake vs expenditure gap analysis.
-- If MFP data is absent: state this clearly, work from Garmin signals, flag reduced confidence.
+- State clearly that there is no logged intake data, and work from Garmin signals only.
 - No meal prescriptions or specific food recommendations.
 - Body composition interpreted relative to the athlete's stated goals."""
 
