@@ -1,7 +1,7 @@
 # Background worker: queue processing, KPI sync, history sync — replaces the
 # macOS LaunchAgents in scripts/. No [http_service]/[[services]] block on purpose:
 # this isn't reachable from the internet, it just needs to keep running.
-app = "ams-worker"
+app = "ams-worker-awj"
 primary_region = "iad"
 
 [build]
