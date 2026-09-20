@@ -3,6 +3,7 @@
 import getpass
 import logging
 import os
+import sys
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -50,5 +51,13 @@ def resolve_garmin_credentials(config: dict[str, Any]) -> tuple[str, str]:
     if cfg_password:
         return email, cfg_password
 
-    # 4. Interactive prompt (not available in headless contexts)
+    # 4. Interactive prompt — refuse to block forever when there's no TTY to read from
+    # (e.g. a GitHub Actions run with a misconfigured Vault entry), rather than hanging.
+    if not sys.stdin.isatty():
+        raise RuntimeError(
+            "No Garmin credentials found in Supabase Vault, system keychain, or the config "
+            "file, and this is a non-interactive session so the password prompt can't run. "
+            "Store the password via the web app's setup wizard (Vault) or `--set-password`."
+        )
+
     return email, getpass.getpass("Enter Garmin Connect password: ")
