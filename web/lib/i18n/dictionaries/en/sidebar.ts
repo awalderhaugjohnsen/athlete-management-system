@@ -5,6 +5,7 @@ export const sidebar = {
     plan: "Plan",
     nutrition: "Nutrition",
     progress: "Progress",
+    chat: "Chat",
     settings: "Settings",
   },
   collapse: "Collapse sidebar",

@@ -3,6 +3,7 @@
 // namespace added to Norwegian without its English counterpart (or vice versa) fails `tsc`
 // instead of silently falling back to English at runtime.
 import { auth } from "./auth";
+import { chat } from "./chat";
 import { common } from "./common";
 import { dashboard } from "./dashboard";
 import { nutrition } from "./nutrition";
@@ -22,4 +23,5 @@ export const en = {
   report,
   nutrition,
   setup,
+  chat,
 };

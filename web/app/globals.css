@@ -333,6 +333,52 @@ html.sb-collapsed-init .sidebar .sb-label { opacity: 0; width: 0; overflow: hidd
 .card-grid .card { margin-top: 0; height: 100%; }
 @media (max-width: 640px) { .card-grid { grid-template-columns: 1fr; } }
 
+/* ── Chat tab ──
+   Every other `.page` just grows with its content and lets the document scroll — the
+   sidebar is `position: fixed`, independent of page length. The chat tab is the one
+   page that should behave like an app pane instead: fill exactly to the viewport
+   bottom and scroll its own message list, so the input stays pinned and in view. That
+   means `.chat-page` has to size itself against the real viewport (`100vh`) rather
+   than joining the document's normal flow. On desktop `.main-area` adds no vertical
+   padding, so `100vh` alone lines up with the viewport; on mobile `.main-area` reserves
+   52px top / 60px+safe-area bottom for the fixed header and tab bar (see the mobile
+   `.main-area` rule below), so the same amount has to be subtracted here too or the
+   chat pane runs behind those fixed bars. */
+/* `.page`'s shared bottom padding (72px desktop / 32px mobile) is bigger than its
+   side padding — fine for a normal page where content just scrolls past it, but this
+   pane's bottom edge is always visible, so a mismatched gap reads as a layout bug.
+   Match it to the side padding instead. */
+.chat-page {
+  display: flex; flex-direction: column; height: 100vh; box-sizing: border-box;
+  padding-bottom: 32px;
+}
+@media (max-width: 768px) {
+  .chat-page { height: calc(100vh - 52px - 60px - env(safe-area-inset-bottom, 0px)); padding-bottom: 16px; }
+}
+.chat-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 12px; }
+.chat-empty { color: var(--dim); font-size: 14px; margin: auto; text-align: center; max-width: 360px; }
+.chat-message {
+  max-width: 72%; padding: 10px 14px; border-radius: var(--radius-sm);
+  font-size: 14px; line-height: 1.5; white-space: pre-wrap;
+}
+.chat-message-user {
+  align-self: flex-end; background: var(--accent); color: #fff;
+}
+.chat-message-assistant {
+  align-self: flex-start; background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+}
+.chat-paragraph { margin: 0 0 8px; }
+.chat-paragraph:last-child { margin-bottom: 0; }
+.chat-heading { font-weight: 700; margin: 10px 0 4px; }
+.chat-heading:first-child { margin-top: 0; }
+.chat-list { margin: 0 0 8px; padding-left: 20px; }
+.chat-list:last-child { margin-bottom: 0; }
+.chat-list li { margin-bottom: 4px; }
+.chat-input-row { display: flex; gap: 10px; align-items: flex-end; padding-top: 12px; border-top: 1px solid var(--border); }
+.chat-input-row .textarea { min-height: 44px; max-height: 160px; }
+.chat-input-row .btn-primary { flex-shrink: 0; }
+
 /* Headings inside cards (used by generated reports) */
 .card h3 { font-size: 14px; font-weight: 700; margin: 14px 0 6px; color: var(--accent); }
 .card h3:first-child { margin-top: 0; }

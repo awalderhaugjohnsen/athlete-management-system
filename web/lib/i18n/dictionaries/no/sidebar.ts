@@ -5,6 +5,7 @@ export const sidebar = {
     plan: "Plan",
     nutrition: "Ernæring",
     progress: "Fremgang",
+    chat: "Chat",
     settings: "Innstillinger",
   },
   collapse: "Slå sammen sidepanel",

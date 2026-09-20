@@ -34,6 +34,7 @@ function navItems(t: Dictionary) {
     { href: "/plan",       label: t.sidebar.nav.plan,       icon: "ti-route" },
     { href: "/nutrition",  label: t.sidebar.nav.nutrition,  icon: "ti-salad" },
     { href: "/report",     label: t.sidebar.nav.progress,   icon: "ti-trending-up" },
+    { href: "/chat",       label: t.sidebar.nav.chat,       icon: "ti-message-circle" },
   ];
 }
 

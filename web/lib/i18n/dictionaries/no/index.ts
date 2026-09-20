@@ -1,5 +1,6 @@
 import type { Dictionary } from "../../types";
 import { auth } from "./auth";
+import { chat } from "./chat";
 import { common } from "./common";
 import { dashboard } from "./dashboard";
 import { nutrition } from "./nutrition";
@@ -21,4 +22,5 @@ export const no: Dictionary = {
   report,
   nutrition,
   setup,
+  chat,
 };
