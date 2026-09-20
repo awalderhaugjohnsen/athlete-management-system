@@ -28,7 +28,7 @@ def get_workflow_context(agent_type: AgentType) -> str:
         return f"""
 ## System Role
 You are the **{agent_type.replace('_', ' ').title()}**.
-- **Input**: Raw `garmin_data` (and MFP data for nutrition)
+- **Input**: Raw `garmin_data`
 - **Output**: Structured `{domain}_summary`
 - **Goal**: Condense raw data into a factual, structured summary for the {domain} expert. Do NOT interpret."""
 

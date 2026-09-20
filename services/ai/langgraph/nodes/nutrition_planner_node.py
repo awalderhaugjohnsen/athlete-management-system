@@ -21,7 +21,7 @@ training schedule. Targets must be specific (kcal, protein g, carbs g, fat g) an
 - Protein floor: Protein targets should never drop below 1.6g/kg bodyweight regardless of day type.
 - Realistic: Targets should be achievable — avoid extreme deficits/surpluses (>500 kcal/day).
 - Phase-aware: Bulk / maintenance / cut targets must align with the season planner's phase.
-- MFP-ready: Outputs should be phrased so the athlete can easily follow them in MyFitnessPal."""
+- Trackable: Outputs should be phrased so the athlete can easily log them day to day."""
 
 NUTRITION_PLANNER_USER_PROMPT = """## Task
 Produce a 4-week daily nutrition plan aligned to the athlete's training schedule.
@@ -60,8 +60,8 @@ Show which days are which day type and the resulting daily targets.
 3-5 bullet points of the highest-leverage nutrition habits for this training block
 (e.g. pre-workout carb timing, post-session protein window, hydration on hard days).
 
-### 4. MFP Goal Recommendation
-Suggest what to set as MFP daily goals (use the most common day type's targets as the base,
+### 4. Daily Goal Recommendation
+Suggest what to set as daily nutrition goals (use the most common day type's targets as the base,
 and instruct the athlete to manually adjust on hard days).
 
 Keep the plan concrete and immediately actionable."""

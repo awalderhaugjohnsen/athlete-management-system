@@ -15,7 +15,6 @@ class TrainingAnalysisState(MessagesState):
     athlete_name: str
     language: str
     garmin_data: dict[str, Any]
-    mfp_data: dict[str, Any] | None
     analysis_context: str
     planning_context: str
     recurring_session_requests: list[dict[str, Any]] | None
@@ -84,7 +83,6 @@ def create_initial_state(
     athlete_name: str,
     garmin_data: dict[str, Any],
     language: str = "en",
-    mfp_data: dict[str, Any] | None = None,
     analysis_context: str = "",
     planning_context: str = "",
     recurring_session_requests: list[dict[str, Any]] | None = None,
@@ -104,7 +102,6 @@ def create_initial_state(
         athlete_name=athlete_name,
         garmin_data=garmin_data,
         language=language,
-        mfp_data=mfp_data,
         analysis_context=analysis_context,
         planning_context=planning_context,
         recurring_session_requests=recurring_session_requests or [],

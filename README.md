@@ -202,7 +202,7 @@ cheap weekly check-in path that skips the expensive branch entirely.
 ```mermaid
 %%{init: {'flowchart': {'curve': 'linear', 'nodeSpacing': 35, 'rankSpacing': 55}}}%%
 flowchart TD
-    GC["Garmin Connect + MyFitnessPal<br/>activities · HRV · sleep · load · food log"]
+    GC["Garmin Connect<br/>activities · HRV · sleep · load"]
 
     subgraph SUMS["Summarizers — parallel fan-out · haiku"]
         SM["metrics_summarizer"]
