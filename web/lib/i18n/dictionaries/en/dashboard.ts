@@ -128,6 +128,14 @@ export const dashboard = {
     nextMonth: "Next month",
     completed: "Completed",
   },
+  memorySuggestions: {
+    title: "Save to your profile?",
+    fromNote: "From your last check-in note:",
+    save: "Save",
+    dismiss: "Dismiss",
+    saving: "Saving…",
+    errorFailed: "Failed to save",
+  },
   recentSessions: {
     title: "Recent Sessions",
     empty: "No completed activities synced yet.",
