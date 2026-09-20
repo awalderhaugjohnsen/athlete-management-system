@@ -44,6 +44,7 @@ class AgentRole(Enum):
     NUTRITION_PLANNER = "nutrition_planner"
     RACE_STRATEGY = "race_strategy"
     PLAN_FORMATTER = "plan_formatter"
+    MEMORY_EXTRACTOR = "memory_extractor"
 
 
 ROLE_TIER: dict[AgentRole, Tier] = {
@@ -64,6 +65,7 @@ ROLE_TIER: dict[AgentRole, Tier] = {
     AgentRole.NUTRITION_PLANNER: Tier.REASONING,
     AgentRole.RACE_STRATEGY: Tier.REASONING,
     AgentRole.PLAN_FORMATTER: Tier.FAST,
+    AgentRole.MEMORY_EXTRACTOR: Tier.FAST,
 }
 
 TIER_MODEL: dict[Tier, str] = {

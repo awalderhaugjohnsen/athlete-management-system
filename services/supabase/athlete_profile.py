@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 
+from .athlete_memory import get_athlete_memory
 from .client import get_supabase, row, rows
 
 logger = logging.getLogger(__name__)
@@ -365,5 +366,14 @@ def build_planning_context(user_id: str) -> str:
 
     if profile.get("additional_notes"):
         lines.append(f"- Additional notes: {profile['additional_notes']}")
+
+    # ── Learned from past check-ins ──────────────────────────────────────────
+    # Confirmed facts the athlete has approved from a check-in comment (see
+    # athlete_memory_suggestions / migration 047) — never anything still pending review.
+    memory_text = get_athlete_memory(user_id)
+    if memory_text:
+        lines.append("")
+        lines.append("=== LEARNED FROM PAST CHECK-INS (confirmed by athlete) ===")
+        lines.append(memory_text.strip())
 
     return "\n".join(lines)

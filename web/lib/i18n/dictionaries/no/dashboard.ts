@@ -124,6 +124,14 @@ export const dashboard = {
     nextMonth: "Neste måned",
     completed: "Fullført",
   },
+  memorySuggestions: {
+    title: "Lagre i profilen din?",
+    fromNote: "Fra notatet i din siste innsjekk:",
+    save: "Lagre",
+    dismiss: "Avvis",
+    saving: "Lagrer…",
+    errorFailed: "Kunne ikke lagre",
+  },
   recentSessions: {
     title: "Nylige økter",
     empty: "Ingen fullførte aktiviteter synkronisert ennå.",

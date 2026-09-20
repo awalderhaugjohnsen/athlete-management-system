@@ -15,6 +15,7 @@ from typing import Any
 
 import yaml
 
+from services.ai.coaching_memory import extract_memory_candidates
 from services.ai.langgraph.workflows.planning_workflow import (
     run_complete_analysis_and_planning,
     run_replan,
@@ -45,6 +46,8 @@ from services.garmin.strength_uploader import (
     upload_strength_session,
 )
 from services.garmin.training_paces import extract_predicted_5k_secs
+from services.supabase.athlete_memory import get_athlete_memory
+from services.supabase.athlete_memory_suggestions import insert_suggestions
 from services.supabase.client import get_supabase, rows
 from services.supabase.plan_drift import analyze_plan_drift
 from services.supabase.plan_writer import (
@@ -463,6 +466,7 @@ async def run_replan_from_config(
     config_path: Path,
     user_comment: str | None = None,
     outer_scheduled_days: list[dict] | None = None,
+    replan_job_id: str | None = None,
 ) -> str | None:
     """Tier-2 check-in: assess the last week, give feedback, and optionally update the 6-week schedule.
     Returns coach_feedback text (or None) so the caller can save it to the job row.
@@ -492,6 +496,19 @@ async def run_replan_from_config(
 
     if user_comment:
         logger.info("User note: %s", user_comment[:120])
+        supabase_user_id = os.environ.get("SUPABASE_USER_ID")
+        if supabase_user_id:
+            try:
+                known_memory = get_athlete_memory(supabase_user_id)
+                candidates = await extract_memory_candidates(user_comment, known_memory)
+                if candidates:
+                    logger.info("Extracted %d memory candidate(s) for review", len(candidates))
+                    insert_suggestions(
+                        supabase_user_id, candidates, source_note=user_comment,
+                        replan_job_id=replan_job_id,
+                    )
+            except Exception:
+                logger.exception("Memory suggestion extraction failed — continuing check-in")
         planning_context = f"{planning_context.rstrip()}\n\n## Athlete Note\n{user_comment.strip()}"
 
     # Widen past 14 days if the athlete hasn't synced in longer than that — see
@@ -1279,7 +1296,10 @@ async def process_queue(config_path: Path) -> None:
                         for d in outer_res
                     ]
                     logger.info("Fetched %d outer days (beyond day 42) to preserve", len(outer_days))
-                coach_feedback = await run_replan_from_config(config_path, user_comment=user_comment, outer_scheduled_days=outer_days)
+                coach_feedback = await run_replan_from_config(
+                    config_path, user_comment=user_comment, outer_scheduled_days=outer_days,
+                    replan_job_id=job_id,
+                )
             elif job_type == "seasonal":
                 await run_analysis_from_config(config_path, user_comment=user_comment)
                 coach_feedback = None
