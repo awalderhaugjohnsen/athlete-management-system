@@ -16,6 +16,11 @@ name: Pipeline worker
 #   - Repo secret AMS_TRAINING_CONFIG: the full contents of my_training_config.yaml.
 #     That file is gitignored (contains an email address + personal goals) and this repo
 #     is public, so it can't be committed — this secret is how the runner gets it instead.
+#   - Repo secret TAILSCALE_AUTHKEY and repo variable TAILSCALE_EXIT_NODE: Garmin rejects
+#     logins from GitHub's runner IPs with a 429 (confirmed by testing), but accepts them
+#     from a residential IP. All of this job's outbound traffic is routed through a
+#     Tailscale exit node running on a Raspberry Pi at home instead, which is the one
+#     network path Garmin has actually accepted in testing.
 
 on:
   schedule:
@@ -46,6 +51,20 @@ jobs:
         run: printf '%s' "$AMS_TRAINING_CONFIG" > my_training_config.yaml
         env:
           AMS_TRAINING_CONFIG: ${{ secrets.AMS_TRAINING_CONFIG }}
+
+      # Confirmed by testing: Garmin's login endpoint 429s every request from GitHub's
+      # runner IPs, but accepts requests from a residential IP. Everything below this step
+      # — queue processing, KPI sync, history sync — needs to go out through the home Pi,
+      # not GitHub's network. If the Pi or home internet is offline, this step fails and
+      # the whole job fails with it (by design — better a clear failure than silently
+      # falling back to the IP that gets 429'd).
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Route outbound traffic through home exit node
+        run: sudo tailscale set --exit-node="${{ vars.TAILSCALE_EXIT_NODE }}" --exit-node-allow-lan-access=true
 
       # Garmin OAuth tokens (~/.garminconnect — services/garmin/client.py's default token
       # dir) and the KPI-sync throttle stamp (~/.ams-kpi-sync — cli/ams.py's _SYNC_STAMP)
