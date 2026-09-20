@@ -1,0 +1,28 @@
+# Secrets — injected as Fly secrets (env vars) at runtime, never baked into the image
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Not needed by the worker
+web/
+tests/
+docs/
+examples/
+data/
+.git/
+.github/
+.claude/
+supabase/
+scripts/*.plist
+.pixi/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.DS_Store
