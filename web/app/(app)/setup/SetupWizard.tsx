@@ -22,7 +22,8 @@ const EMPTY: AthleteProfile = {
   bench_1rm_kg: null, squat_1rm_kg: null, deadlift_1rm_kg: null,
   run_5k_time: "", run_10k_time: "", other_benchmarks: "",
   available_days: [], session_duration_mins: null, gym_access: null,
-  equipment_notes: "", schedule_notes: "", recurring_session_requests: [],
+  equipment_notes: "", schedule_notes: "", allow_multi_session_days: false,
+  recurring_session_requests: [],
   current_injuries: "", injury_history: "", exercises_to_avoid: "", health_notes: "",
   preferred_style: "", training_enjoyments: "", training_dislikes: "",
   indoor_outdoor: "", additional_notes: "", meal_variety_preference: "balanced",
@@ -293,6 +294,12 @@ function ScheduleStep({ data, set }: { data: AthleteProfile; set: (p: Partial<At
           placeholder={t.schedule.constraintsPlaceholder}
           value={data.schedule_notes} onChange={e => set({ schedule_notes: e.target.value })} />
       </Field>
+      <RadioGroup label={t.schedule.multiSessionDaysLabel} value={data.allow_multi_session_days ? "yes" : "no"} onChange={v => set({ allow_multi_session_days: v === "yes" })}
+        options={[
+          { value: "yes", label: t.schedule.multiSessionDaysOptions.yes.label, desc: t.schedule.multiSessionDaysOptions.yes.desc },
+          { value: "no",  label: t.schedule.multiSessionDaysOptions.no.label,  desc: t.schedule.multiSessionDaysOptions.no.desc },
+        ]}
+      />
     </div>
   );
 }
@@ -638,7 +645,7 @@ export function SetupWizard({ initial, devProfileStale, garminEmail }: { initial
     const keys: (keyof AthleteProfile)[][] = [
       ["primary_goal_type", "primary_goal_detail", "weight_goal_direction", "secondary_goals", "goal_timeline", "events"],
       ["training_years_strength", "training_years_cardio", "sport_background", "sessions_per_week", "hours_per_week", "bench_1rm_kg", "squat_1rm_kg", "deadlift_1rm_kg", "run_5k_time", "run_10k_time", "other_benchmarks"],
-      ["available_days", "session_duration_mins", "gym_access", "equipment_notes", "schedule_notes"],
+      ["available_days", "session_duration_mins", "gym_access", "equipment_notes", "schedule_notes", "allow_multi_session_days"],
       ["recurring_session_requests"],
       ["current_injuries", "injury_history", "exercises_to_avoid", "health_notes"],
       ["preferred_style", "training_enjoyments", "training_dislikes", "indoor_outdoor", "additional_notes", "meal_variety_preference", "country", "grocery_stores_notes"],

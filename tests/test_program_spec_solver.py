@@ -41,13 +41,13 @@ def adrians_real_spec(min_rest_days_per_week: int = 0) -> ProgramSpec:
     """
     return ProgramSpec(
         session_types=[
-            ProgramSessionType(key="strength-a", category="leg-strength", label="A", session_kind="strength", is_key=True),
-            ProgramSessionType(key="strength-b", category="leg-strength", label="B", session_kind="strength", is_key=True),
-            ProgramSessionType(key="strength-c", category="upper-strength", label="C", session_kind="strength", is_key=True),
-            ProgramSessionType(key="tempo-run", category="key-run", label="Tempo", session_kind="run", is_key=True),
-            ProgramSessionType(key="vo2max-run", category="key-run", label="VO2max", session_kind="run", is_key=True),
-            ProgramSessionType(key="easy-run", category="easy-run", label="Easy", session_kind="run"),
-            ProgramSessionType(key="rest", category="rest", label="Rest", session_kind="rest"),
+            ProgramSessionType(key="strength-a", category=["leg-strength"], label="A", session_kind="strength", is_key=True),
+            ProgramSessionType(key="strength-b", category=["leg-strength"], label="B", session_kind="strength", is_key=True),
+            ProgramSessionType(key="strength-c", category=["upper-strength"], label="C", session_kind="strength", is_key=True),
+            ProgramSessionType(key="tempo-run", category=["key-run"], label="Tempo", session_kind="run", is_key=True),
+            ProgramSessionType(key="vo2max-run", category=["key-run"], label="VO2max", session_kind="run", is_key=True),
+            ProgramSessionType(key="easy-run", category=["easy-run"], label="Easy", session_kind="run"),
+            ProgramSessionType(key="rest", category=["rest"], label="Rest", session_kind="rest"),
         ],
         weekly_targets=[
             WeeklyTarget(session_type_key="strength-a", min_per_week=1, max_per_week=1),
@@ -75,8 +75,8 @@ def adrians_real_spec(min_rest_days_per_week: int = 0) -> ProgramSpec:
 
 
 def spacing_violations(spec: ProgramSpec, assignments: dict[date, str]) -> list[tuple[date, date]]:
-    leg_keys = {st.key for st in spec.session_types if st.category == "leg-strength"}
-    key_run_keys = {st.key for st in spec.session_types if st.category == "key-run"}
+    leg_keys = {st.key for st in spec.session_types if "leg-strength" in st.category}
+    key_run_keys = {st.key for st in spec.session_types if "key-run" in st.category}
     leg_days = sorted(d for d, k in assignments.items() if k in leg_keys)
     key_days = sorted(d for d, k in assignments.items() if k in key_run_keys)
     return [(leg, run) for leg in leg_days for run in key_days if run > leg and (run - leg).days * 24 < 24]
@@ -132,7 +132,7 @@ class TestGenuineInfeasibility:
 
     def test_weekly_target_exceeding_window_length_is_infeasible(self):
         spec = ProgramSpec(
-            session_types=[ProgramSessionType(key="x", category="x", label="X", session_kind="run")],
+            session_types=[ProgramSessionType(key="x", category=["x"], label="X", session_kind="run")],
             weekly_targets=[WeeklyTarget(session_type_key="x", min_per_week=8, max_per_week=8)],
         )
         window = [date(2026, 8, 24) + timedelta(days=i) for i in range(7)]
@@ -144,8 +144,8 @@ class TestGenuineInfeasibility:
     def test_two_hard_pinned_days_too_close_together_is_infeasible(self):
         spec = ProgramSpec(
             session_types=[
-                ProgramSessionType(key="leg", category="leg", label="Leg", session_kind="strength"),
-                ProgramSessionType(key="key-run", category="key-run", label="Key Run", session_kind="run"),
+                ProgramSessionType(key="leg", category=["leg"], label="Leg", session_kind="strength"),
+                ProgramSessionType(key="key-run", category=["key-run"], label="Key Run", session_kind="run"),
             ],
             spacing_constraints=[
                 SpacingConstraint(from_category="leg", to_category="key-run", min_gap_hours=48, direction="before")
@@ -164,9 +164,9 @@ class TestBasicFeasibility:
     def test_simple_well_formed_spec_is_satisfied(self):
         spec = ProgramSpec(
             session_types=[
-                ProgramSessionType(key="strength", category="strength", label="Strength", session_kind="strength"),
-                ProgramSessionType(key="easy-run", category="easy-run", label="Easy Run", session_kind="run"),
-                ProgramSessionType(key="rest", category="rest", label="Rest", session_kind="rest"),
+                ProgramSessionType(key="strength", category=["strength"], label="Strength", session_kind="strength"),
+                ProgramSessionType(key="easy-run", category=["easy-run"], label="Easy Run", session_kind="run"),
+                ProgramSessionType(key="rest", category=["rest"], label="Rest", session_kind="rest"),
             ],
             weekly_targets=[
                 WeeklyTarget(session_type_key="strength", min_per_week=2, max_per_week=2),
@@ -186,8 +186,8 @@ class TestBasicFeasibility:
     def test_fixed_day_pin_is_always_honored(self):
         spec = ProgramSpec(
             session_types=[
-                ProgramSessionType(key="class", category="class", label="Spin Class", session_kind="cross"),
-                ProgramSessionType(key="rest", category="rest", label="Rest", session_kind="rest"),
+                ProgramSessionType(key="class", category=["class"], label="Spin Class", session_kind="cross"),
+                ProgramSessionType(key="rest", category=["rest"], label="Rest", session_kind="rest"),
             ],
             weekly_targets=[WeeklyTarget(session_type_key="class", min_per_week=1, max_per_week=1)],
             day_pins=[DayPin(session_type_key="class", day_of_week="tuesday", flexibility="fixed")],
@@ -200,10 +200,63 @@ class TestBasicFeasibility:
 
     def test_window_with_duplicate_dates_raises(self):
         spec = ProgramSpec(
-            session_types=[ProgramSessionType(key="x", category="x", label="X", session_kind="run")],
+            session_types=[ProgramSessionType(key="x", category=["x"], label="X", session_kind="run")],
         )
         with pytest.raises(ValueError):
             solve_schedule(spec, [date(2026, 8, 24), date(2026, 8, 24)])
+
+
+class TestMultiTagCategorySpacing:
+    """category became list-valued so one session type can carry several muscle-group tags
+    (see services/scheduling/muscle_groups.py) — confirms the solver treats a SpacingConstraint
+    as a membership check (either tag on the session type binds it), and that 48h is the real
+    floor: solver.py's day-granularity math (gap = calendar-day-diff * 24) makes any threshold
+    <=24h a no-op for two different dates, since the smallest achievable positive gap already
+    clears it. This is the actual fix for 'what stops the coach scheduling chest right after
+    chest' — see spec_bootstrap.py::build_deterministic_recovery_spacing_constraints.
+
+    Both dates are supplied via pinned_events so the check is a direct, deterministic test of
+    the spacing math itself (no weekly_targets/day_pin machinery needed to force placement).
+    """
+
+    def _spec(self, min_gap_hours: int) -> ProgramSpec:
+        return ProgramSpec(
+            session_types=[
+                ProgramSessionType(key="strength-a", category=["chest", "legs"], label="A", session_kind="strength", is_key=True),
+                ProgramSessionType(key="strength-c", category=["chest", "back"], label="C", session_kind="strength", is_key=True),
+            ],
+            spacing_constraints=[
+                SpacingConstraint(from_category="chest", to_category="chest", min_gap_hours=min_gap_hours, direction="either"),
+            ],
+        )
+
+    def test_24h_or_under_does_not_actually_block_adjacent_days(self):
+        """Documents the pre-fix bug: a <=24h threshold is a mathematical no-op under
+        day-granularity gap math, so both sessions can land on adjacent days.
+        """
+        monday, tuesday = date(2026, 8, 24), date(2026, 8, 25)
+        result = solve_schedule(
+            self._spec(min_gap_hours=24), [monday, tuesday],
+            pinned_events={monday: "strength-a", tuesday: "strength-c"},
+        )
+        assert result.feasible
+
+    def test_48h_blocks_two_chest_sessions_on_adjacent_days(self):
+        monday, tuesday = date(2026, 8, 24), date(2026, 8, 25)
+        result = solve_schedule(
+            self._spec(min_gap_hours=48), [monday, tuesday],
+            pinned_events={monday: "strength-a", tuesday: "strength-c"},
+        )
+        assert not result.feasible
+        assert any("chest" in reason for reason in (result.infeasible_reasons or []))
+
+    def test_48h_allows_two_chest_sessions_two_days_apart(self):
+        monday, wednesday = date(2026, 8, 24), date(2026, 8, 26)
+        result = solve_schedule(
+            self._spec(min_gap_hours=48), [monday, wednesday],
+            pinned_events={monday: "strength-a", wednesday: "strength-c"},
+        )
+        assert result.feasible
 
 
 class TestMultiSessionPerDay:
@@ -215,7 +268,7 @@ class TestMultiSessionPerDay:
 
     def test_default_spec_never_populates_slot_assignments(self):
         spec = ProgramSpec(
-            session_types=[ProgramSessionType(key="x", category="x", label="X", session_kind="run")],
+            session_types=[ProgramSessionType(key="x", category=["x"], label="X", session_kind="run")],
         )
         assert spec.allow_multi_session_days is False
         window = [date(2026, 8, 24)]
@@ -226,7 +279,7 @@ class TestMultiSessionPerDay:
 
     def test_pinned_slot_events_requires_the_opt_in_flag(self):
         spec = ProgramSpec(
-            session_types=[ProgramSessionType(key="x", category="x", label="X", session_kind="run")],
+            session_types=[ProgramSessionType(key="x", category=["x"], label="X", session_kind="run")],
         )
         with pytest.raises(ValueError):
             solve_schedule(
@@ -238,8 +291,8 @@ class TestMultiSessionPerDay:
         d = date(2026, 8, 24)
         spec = ProgramSpec(
             session_types=[
-                ProgramSessionType(key="easy-run", category="run-easy", label="Easy", session_kind="run"),
-                ProgramSessionType(key="strength", category="leg-strength", label="Strength", session_kind="strength"),
+                ProgramSessionType(key="easy-run", category=["run-easy"], label="Easy", session_kind="run"),
+                ProgramSessionType(key="strength", category=["leg-strength"], label="Strength", session_kind="strength"),
             ],
             day_pins=[
                 DayPin(session_type_key="easy-run", fixed_date=d, time_slot="morning", flexibility="fixed"),
@@ -259,8 +312,8 @@ class TestMultiSessionPerDay:
         d = date(2026, 8, 24)
         spec = ProgramSpec(
             session_types=[
-                ProgramSessionType(key="strength", category="leg-strength", label="S", session_kind="strength"),
-                ProgramSessionType(key="run", category="key-run", label="R", session_kind="run", is_key=True),
+                ProgramSessionType(key="strength", category=["leg-strength"], label="S", session_kind="strength"),
+                ProgramSessionType(key="run", category=["key-run"], label="R", session_kind="run", is_key=True),
             ],
             spacing_constraints=[
                 SpacingConstraint(from_category="leg-strength", to_category="key-run", min_gap_hours=6, direction="before"),
@@ -281,8 +334,8 @@ class TestMultiSessionPerDay:
         d = date(2026, 8, 24)
         spec = ProgramSpec(
             session_types=[
-                ProgramSessionType(key="strength", category="leg-strength", label="S", session_kind="strength"),
-                ProgramSessionType(key="run", category="key-run", label="R", session_kind="run", is_key=True),
+                ProgramSessionType(key="strength", category=["leg-strength"], label="S", session_kind="strength"),
+                ProgramSessionType(key="run", category=["key-run"], label="R", session_kind="run", is_key=True),
             ],
             spacing_constraints=[
                 SpacingConstraint(from_category="leg-strength", to_category="key-run", min_gap_hours=6, direction="before"),
@@ -306,8 +359,8 @@ class TestMultiSessionPerDay:
         window = [monday + timedelta(days=i) for i in range(7)]
         spec = ProgramSpec(
             session_types=[
-                ProgramSessionType(key="easy-run", category="run-easy", label="Easy", session_kind="run"),
-                ProgramSessionType(key="rest", category="rest", label="Rest", session_kind="rest"),
+                ProgramSessionType(key="easy-run", category=["run-easy"], label="Easy", session_kind="run"),
+                ProgramSessionType(key="rest", category=["rest"], label="Rest", session_kind="rest"),
             ],
             weekly_targets=[WeeklyTarget(session_type_key="easy-run", min_per_week=2, max_per_week=2)],
             day_pins=[
@@ -333,8 +386,8 @@ class TestMultiSessionPerDay:
         window = [monday + timedelta(days=i) for i in range(7)]
         spec = ProgramSpec(
             session_types=[
-                ProgramSessionType(key="strength", category="strength", label="S", session_kind="strength"),
-                ProgramSessionType(key="rest", category="rest", label="Rest", session_kind="rest"),
+                ProgramSessionType(key="strength", category=["strength"], label="S", session_kind="strength"),
+                ProgramSessionType(key="rest", category=["rest"], label="Rest", session_kind="rest"),
             ],
             rest_policy=RestPolicy(min_rest_days_per_week=7),  # every single day must be pure rest
             day_pins=[
@@ -353,8 +406,8 @@ class TestMultiSessionPerDay:
         d = date(2026, 8, 24)
         spec = ProgramSpec(
             session_types=[
-                ProgramSessionType(key="race", category="race", label="Race", session_kind="run", is_key=True),
-                ProgramSessionType(key="strength", category="strength", label="S", session_kind="strength"),
+                ProgramSessionType(key="race", category=["race"], label="Race", session_kind="run", is_key=True),
+                ProgramSessionType(key="strength", category=["strength"], label="S", session_kind="strength"),
             ],
             allow_multi_session_days=True,
         )
@@ -372,7 +425,7 @@ class TestProgramSpecValidation:
 
     def _base_kwargs(self, **overrides):
         kwargs = {
-            "session_types": [ProgramSessionType(key="a", category="cat-a", label="A", session_kind="strength")],
+            "session_types": [ProgramSessionType(key="a", category=["cat-a"], label="A", session_kind="strength")],
         }
         kwargs.update(overrides)
         return kwargs
@@ -392,8 +445,8 @@ class TestProgramSpecValidation:
     def test_duplicate_session_type_keys_rejected(self):
         with pytest.raises(ValueError):
             ProgramSpec(session_types=[
-                ProgramSessionType(key="a", category="c", label="A", session_kind="strength"),
-                ProgramSessionType(key="a", category="c", label="A again", session_kind="strength"),
+                ProgramSessionType(key="a", category=["c"], label="A", session_kind="strength"),
+                ProgramSessionType(key="a", category=["c"], label="A again", session_kind="strength"),
             ])
 
     def test_weekly_target_max_below_min_rejected(self):

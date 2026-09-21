@@ -29,11 +29,11 @@ class TestBuildDeterministicSessionTypes:
         types = build_deterministic_session_types(ADRIAN_TEMPLATES)
         assert [st.key for st in types] == ["strength-a", "strength-b", "strength-c"]
 
-    def test_leg_carrying_slots_categorized_correctly(self):
+    def test_slots_tagged_with_real_muscle_groups(self):
         types = {st.key: st for st in build_deterministic_session_types(ADRIAN_TEMPLATES)}
-        assert types["strength-a"].category == "leg-strength"
-        assert types["strength-b"].category == "leg-strength"
-        assert types["strength-c"].category == "upper-strength"
+        assert types["strength-a"].category == ["chest", "legs"]
+        assert types["strength-b"].category == ["chest", "legs"]
+        assert types["strength-c"].category == ["back", "chest"]
 
     def test_every_strength_type_is_key(self):
         types = build_deterministic_session_types(ADRIAN_TEMPLATES)
@@ -89,7 +89,7 @@ class TestBuildDeterministicWeeklyTargets:
 class TestBuildDeterministicLegSpacingConstraint:
     def test_default_gap(self):
         sc = build_deterministic_leg_spacing_constraint()
-        assert sc.from_category == "leg-strength"
+        assert sc.from_category == "legs"
         assert sc.to_category == "key-run"
         assert sc.min_gap_hours == 24
         assert sc.direction == "before"
@@ -104,13 +104,14 @@ class TestBuildDeterministicRecoverySpacingConstraints:
         types = build_deterministic_session_types(ADRIAN_TEMPLATES)
         constraints = build_deterministic_recovery_spacing_constraints(types)
         pairs = {(c.from_category, c.to_category) for c in constraints}
+        # Real tags present across ADRIAN_TEMPLATES: chest (A/B/C), legs (A/B), back (C).
         assert pairs == {
-            ("leg-strength", "leg-strength"),
-            ("leg-strength", "upper-strength"),
-            ("upper-strength", "upper-strength"),
+            ("back", "back"), ("back", "chest"), ("back", "legs"),
+            ("chest", "chest"), ("chest", "legs"),
+            ("legs", "legs"),
         }
         assert all(c.direction == "either" for c in constraints)
-        assert all(c.min_gap_hours == 24 for c in constraints)
+        assert all(c.min_gap_hours == 48 for c in constraints)
 
     def test_custom_gap(self):
         types = build_deterministic_session_types(ADRIAN_TEMPLATES)

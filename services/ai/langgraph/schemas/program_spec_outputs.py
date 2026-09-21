@@ -35,7 +35,7 @@ class NewSessionTypeDraft(BaseModel):
         ...,
         description=(
             "Grouping used by spacing_constraints/progression_schemes. Use category "
-            "'key-run' for any hard/key run session type — the fixed 48h leg-spacing "
+            "'key-run' for any hard/key run session type — the fixed 24h leg-spacing "
             "constraint binds to that category name specifically."
         ),
     )

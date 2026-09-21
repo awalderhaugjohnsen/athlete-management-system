@@ -152,6 +152,28 @@ def get_recurring_session_requests(user_id: str) -> list[dict]:
         return []
 
 
+def get_allow_multi_session_days(user_id: str) -> bool:
+    """Athlete opt-in for more than one session per calendar day (migration 049).
+
+    Off by default/on any failure — a spec built with allow_multi_session_days=False
+    is always a valid fallback (the original, unchanged single-session-per-day
+    model), never a data-loss risk the way silently returning True would be.
+    """
+    try:
+        sb = get_supabase()
+        result = row(
+            sb.table("athlete_profile")
+            .select("allow_multi_session_days")
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+        return bool((result or {}).get("allow_multi_session_days") or False)
+    except Exception as exc:
+        logger.warning("Failed to load allow_multi_session_days for %s: %s", user_id, exc)
+        return False
+
+
 def get_strength_session_templates(user_id: str) -> list[dict]:
     """Return the athlete's saved strength session template rows (slots A/B/C), sorted by slot
     then display_order. Raw rows — see build_strength_templates_context() for the rendered

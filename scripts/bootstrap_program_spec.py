@@ -78,7 +78,7 @@ def build_program_spec(user_id: str, min_rest_days_per_week: int = 0) -> Program
         category = "key-run" if is_key else f"{session_kind}-easy"
 
         session_types.append(
-            ProgramSessionType(key=key, category=category, label=req["label"], session_kind=session_kind, is_key=is_key)
+            ProgramSessionType(key=key, category=[category], label=req["label"], session_kind=session_kind, is_key=is_key)
         )
         if req.get("importance") == "must":
             weekly_targets.append(WeeklyTarget(session_type_key=key, min_per_week=1, max_per_week=1))

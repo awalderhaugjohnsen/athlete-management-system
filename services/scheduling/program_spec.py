@@ -21,7 +21,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # The 4 real time-of-day buckets a session can be scheduled into. Deliberately excludes the
 # storage-layer 'day' sentinel (migration 045) — that value only exists on scheduled_days/
@@ -38,15 +38,26 @@ class ProgramSessionType(BaseModel):
     """
 
     key: str = Field(..., description="Unique identifier, e.g. 'strength-a'.")
-    category: str = Field(
+    category: list[str] = Field(
         ...,
         description=(
-            "Grouping used by spacing_constraints and progression_schemes. "
-            "Multiple session types can share a category, e.g. 'strength-a' and "
-            "'strength-c' might both be category 'leg-strength' while "
-            "'strength-b' is category 'upper-strength'."
+            "Tags used by spacing_constraints and progression_schemes. A session "
+            "type can carry more than one — e.g. a strength slot combining a "
+            "bench press and a squat is both 'chest' and 'legs' — a "
+            "SpacingConstraint binds if EITHER session in a pair carries the "
+            "referenced tag. Multiple session types can share a tag."
         ),
     )
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _wrap_bare_category_string(cls, v: Any) -> Any:
+        """Accept a bare string for back-compat with specs stored before category
+        became list-valued (e.g. {"category": "leg-strength"}) — wrap it into a
+        single-item list rather than forcing every previously-stored
+        program_specs row to be re-authored before it can be read again.
+        """
+        return [v] if isinstance(v, str) else v
     label: str = Field(..., description="Human-readable name.")
     session_kind: Literal["strength", "run", "cross", "rest"] = Field(
         ..., description="Broad kind, for rendering/downstream routing."
@@ -240,7 +251,7 @@ class ProgramSpec(BaseModel):
 
     @model_validator(mode="after")
     def _check_spacing_category_references(self) -> ProgramSpec:
-        categories = {st.category for st in self.session_types}
+        categories = {c for st in self.session_types for c in st.category}
         for sc in self.spacing_constraints:
             for category in (sc.from_category, sc.to_category):
                 if category not in categories:

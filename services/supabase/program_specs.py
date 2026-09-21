@@ -71,12 +71,20 @@ def write_active_program_spec(
 
 def fetch_checkin_context(
     user_id: str, window_dates: list[date]
-) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[date, dict[str, Any]]]:
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[tuple[date, str], dict[str, Any]]]:
     """Fetch what a check-in needs from scheduled_days/strength_sessions.
 
     Returns (today's scheduled_days row, today's strength_sessions row,
-    {date: row} for the whole window) — strength rows enriched with 'slot' so
-    live_state.py's resolvers can match them to a session_type_key.
+    {(date, time_slot): row} for the whole window) — strength rows enriched
+    with 'slot' so live_state.py's resolvers can match them to a
+    session_type_key. Keyed by (date, time_slot) rather than bare date — every
+    row already carries time_slot (defaulting to 'day' for an unslotted,
+    single-session-per-date row, per migration 045) — so an athlete with
+    allow_multi_session_days=True and more than one committed session on the
+    same date gets a row per slot instead of one silently overwriting another.
+    See compute_checkin_fixed_days, which relies on this to avoid turning an
+    already-committed session into a whole-day pin that blocks a second
+    session from landing on that date.
 
     Returns raw dict rows, not domain objects — feed them into
     services/scheduling/live_state.py's pure functions.
@@ -89,7 +97,7 @@ def fetch_checkin_context(
 
     scheduled_rows = rows(
         sb.table("scheduled_days")
-        .select("date, session_type, is_key")
+        .select("date, time_slot, session_type, is_key")
         .eq("user_id", user_id)
         .gte("date", start_str)
         .lte("date", end_str)
@@ -98,23 +106,29 @@ def fetch_checkin_context(
 
     strength_rows = rows(
         sb.table("strength_sessions")
-        .select("date, slot")
+        .select("date, time_slot, slot")
         .eq("user_id", user_id)
         .gte("date", start_str)
         .lte("date", end_str)
         .execute()
     )
-    slot_by_date = {r["date"]: r.get("slot") for r in strength_rows}
+    slot_by_key = {(r["date"], r.get("time_slot") or "day"): r.get("slot") for r in strength_rows}
 
-    existing: dict[date, dict[str, Any]] = {}
+    existing: dict[tuple[date, str], dict[str, Any]] = {}
     today_row: dict[str, Any] | None = None
+    today_strength_row: dict[str, Any] | None = None
     for r in scheduled_rows:
+        time_slot = r.get("time_slot") or "day"
+        key = (r["date"], time_slot)
         enriched = dict(r)
-        if r.get("session_type") == "strength" and r["date"] in slot_by_date:
-            enriched["slot"] = slot_by_date[r["date"]]
-        existing[date.fromisoformat(r["date"])] = enriched
-        if r["date"] == today_str:
+        if r.get("session_type") == "strength" and key in slot_by_key:
+            enriched["slot"] = slot_by_key[key]
+        existing[(date.fromisoformat(r["date"]), time_slot)] = enriched
+        if r["date"] == today_str and today_row is None:
+            # resolve_today_pin pins a single whole-day fallback, not one per slot — first
+            # match wins if today somehow already carries more than one committed session.
             today_row = enriched
+            if key in slot_by_key:
+                today_strength_row = {"slot": slot_by_key[key]}
 
-    today_strength_row = {"slot": slot_by_date[today_str]} if today_str in slot_by_date else None
     return today_row, today_strength_row, existing

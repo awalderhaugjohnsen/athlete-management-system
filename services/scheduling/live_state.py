@@ -73,19 +73,33 @@ def resolve_today_pin(
 
 def compute_checkin_fixed_days(
     window_dates: list[date],
-    existing_scheduled_days: dict[date, dict[str, Any]],
+    existing_scheduled_days: dict[tuple[date, str], dict[str, Any]],
     overrides: dict[date, str],
     spec: ProgramSpec,
-) -> dict[date, str]:
+) -> tuple[dict[date, str], dict[tuple[date, str], str]]:
     """Everything solve_schedule should treat as already-decided for a check-in.
 
-    - Existing scheduled_days rows NOT touched by an override, resolved to a
-      session_type_key (churn avoidance — re-solving the whole window from
-      scratch every check-in risks CP-SAT returning a different-but-equally-
-      valid placement each run, needlessly reshuffling Garmin workouts that
-      were never disrupted).
-    - The athlete-note-translated overrides, which take priority over the
-      existing schedule for the same date.
+    Returns (pinned_events, pinned_slot_events) — solve_schedule's own two
+    pinning mechanisms (see its docstring): pinned_events is a whole-day pin
+    (blocks every other session sharing that date, in either solver mode);
+    pinned_slot_events pins one specific (date, time_slot) cell and is only
+    meaningful when spec.allow_multi_session_days is True.
+
+    - overrides (the athlete-note-translated {date: key} pairs) are always
+      whole-day intent — the translation has no time_slot concept, "skip
+      Thursday's tempo" means the whole day — so they always go into
+      pinned_events, regardless of solver mode.
+    - Existing, undisturbed scheduled_days rows NOT touched by an override,
+      resolved to a session_type_key (churn avoidance — re-solving the whole
+      window from scratch every check-in risks CP-SAT returning a different-
+      but-equally-valid placement each run, needlessly reshuffling Garmin
+      workouts that were never disrupted), go into pinned_events under the
+      single-session model (unchanged behavior) or pinned_slot_events under
+      allow_multi_session_days — so an already-committed session on one slot
+      doesn't block the solver from placing something else on another slot of
+      the same date, which is what made turning the flag on unsafe before
+      this fix (a whole-day pin blocks any other session sharing that date,
+      per solve_schedule's own docstring).
 
     Dates with no existing row (the new tail of the rolling window) and dates
     an override displaced are deliberately left OUT — those are what the
@@ -95,18 +109,21 @@ def compute_checkin_fixed_days(
     """
     window_set = set(window_dates)
     valid_keys = {st.key for st in spec.session_types}
-    fixed: dict[date, str] = {}
 
-    for d, row in existing_scheduled_days.items():
+    pinned_events: dict[date, str] = {
+        d: key for d, key in overrides.items() if d in window_set and key in valid_keys
+    }
+
+    pinned_slot_events: dict[tuple[date, str], str] = {}
+    for (d, time_slot), row in existing_scheduled_days.items():
         if d not in window_set or d in overrides:
             continue
         key = _resolve_row_session_type_key(row, spec)
-        if key is not None:
-            fixed[d] = key
+        if key is None:
+            continue
+        if spec.allow_multi_session_days:
+            pinned_slot_events[(d, time_slot)] = key
+        else:
+            pinned_events[d] = key
 
-    fixed.update({
-        d: key for d, key in overrides.items()
-        if d in window_set and key in valid_keys
-    })
-
-    return fixed
+    return pinned_events, pinned_slot_events

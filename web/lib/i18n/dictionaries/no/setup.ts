@@ -169,6 +169,11 @@ export const setup = {
     constraintsLabel: "Timeplanbegrensninger",
     constraintsHint: "Arbeidstid, reisevei, reising, familie — alt som begrenser fleksibiliteten.",
     constraintsPlaceholder: "f.eks. Kontor 8–17 man–fre, kan trene før jobb (06:00) eller på kveldstid.",
+    multiSessionDaysLabel: "Mer enn én økt per dag",
+    multiSessionDaysOptions: {
+      yes: { label: "Ja — tillat det", desc: "Treneren kan legge inn mer enn én økt samme dag (f.eks. styrke om morgenen, løping om kvelden) når det gir mening." },
+      no: { label: "Nei — én økt per dag", desc: "Behold nøyaktig én økt per kalenderdag, som i dag." },
+    },
   },
 
   preferredSessions: {
