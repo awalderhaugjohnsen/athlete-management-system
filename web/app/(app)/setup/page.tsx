@@ -1,6 +1,8 @@
 import { getAthleteProfile } from "@/app/actions/athlete-profile";
 import { getGarminConnectionStatus } from "@/app/actions/garmin-credentials";
+import { getPendingMemorySuggestions } from "@/app/actions/memory-suggestions";
 import { SetupWizard } from "./SetupWizard";
+import { PendingSuggestionsList } from "@/app/(app)/PendingSuggestionsList";
 import Link from "next/link";
 import { getUserId } from "@/lib/supabase-server";
 import { getAuthenticatedLanguage } from "@/lib/i18n/getServerLanguage";
@@ -16,10 +18,12 @@ export default async function SetupPage() {
   const uid = await getUserId();
   const language = await getAuthenticatedLanguage(uid);
   const t = dictionaries[language].setup;
+  const memoryT = dictionaries[language].dashboard.memorySuggestions;
 
-  const [profile, garmin] = await Promise.all([
+  const [profile, garmin, pendingMemorySuggestions] = await Promise.all([
     getAthleteProfile(),
     getGarminConnectionStatus(),
+    getPendingMemorySuggestions(),
   ]);
 
   return (
@@ -33,6 +37,14 @@ export default async function SetupPage() {
           {t.page.description}
         </p>
       </div>
+      {pendingMemorySuggestions.length > 0 && (
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1.2px", textTransform: "uppercase", color: "var(--accent)", marginBottom: 12 }}>
+            {memoryT.setupSectionTitle}
+          </div>
+          <PendingSuggestionsList suggestions={pendingMemorySuggestions} bare />
+        </div>
+      )}
       <SetupWizard initial={profile} garminEmail={garmin.email} />
     </main>
   );

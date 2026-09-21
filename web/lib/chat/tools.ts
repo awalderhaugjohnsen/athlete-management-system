@@ -3,12 +3,18 @@ import { createServerClient } from "@/lib/supabase-server";
 import { getAthleteProfile } from "@/app/actions/athlete-profile";
 import { todayISO, daysAgoISO, weekBounds } from "@/lib/dates";
 
-// Read-only tools for the Chat tab's coaching assistant. Every handler takes the
-// server-resolved `uid` as its first argument — never a model-supplied parameter —
-// so the assistant is structurally unable to read (or write) another athlete's data,
-// and has no write tools at all, so it cannot alter the plan or any other DB state.
-// This is the control mechanism for the feature: enforced by which tools exist, not
-// by a prompt instruction asking the model to behave.
+// Tools for the Chat tab's coaching assistant. Every handler takes the server-resolved
+// `uid` as its first argument — never a model-supplied parameter — so the assistant is
+// structurally unable to read (or write) another athlete's data. All tools but one are
+// read-only; `propose_memory_fact` is the single, narrow exception, and it still can't
+// alter the plan or profile directly — it only inserts a `pending` row into
+// athlete_memory_suggestions, the same review queue check-in/reschedule/new-season notes
+// already feed (see services/supabase/athlete_memory_suggestions.py, migration 047). The
+// athlete accepts/dismisses it later from the dashboard pop-up or /setup — nothing this
+// tool does ever reaches athlete_memory or athlete_profile on its own.
+
+const MEMORY_CATEGORIES = ["injuries", "preferences", "equipment", "schedule", "observations", "goals"] as const;
+type MemoryCategory = (typeof MEMORY_CATEGORIES)[number];
 
 const DAILY_METRIC_COLUMNS = [
   "ctl", "atl", "tsb", "acwr", "ramp_7d", "monotony", "strain",
@@ -73,6 +79,25 @@ export const CHAT_TOOL_DEFS: Anthropic.Tool[] = [
       properties: {
         days: { type: "integer", minimum: 1, maximum: 90, default: 7 },
       },
+    },
+  },
+  {
+    name: "propose_memory_fact",
+    description:
+      "Flag a durable fact (an injury, an equipment/schedule change, or a strongly stated preference) for " +
+      "the athlete's coach to review. Only call this AFTER the athlete has explicitly said yes to a direct " +
+      "question from you asking whether to save it — never on your own inference, and never for something " +
+      "transient (today's soreness, a single missed session, mood). This does not save anything by itself: " +
+      "it only queues a pending suggestion the athlete still has to accept from the dashboard or /setup " +
+      "before it affects any future plan.",
+    input_schema: {
+      type: "object",
+      properties: {
+        category: { type: "string", enum: [...MEMORY_CATEGORIES] },
+        key: { type: "string", description: "Short snake_case identifier, e.g. 'shin_splints' or 'tuesday_running_club'." },
+        value: { type: "string", description: "The durable fact itself, restated in one plain sentence." },
+      },
+      required: ["category", "key", "value"],
     },
   },
 ];
@@ -159,7 +184,49 @@ async function getNutritionHistory(uid: string, input: { days?: number }) {
   return { days, entries: data ?? [] };
 }
 
-export async function runChatTool(name: string, uid: string, input: Record<string, unknown>): Promise<unknown> {
+async function proposeMemoryFact(
+  uid: string,
+  input: { category?: string; key?: string; value?: string },
+  sourceNote: string,
+) {
+  const category = input.category as MemoryCategory;
+  if (!MEMORY_CATEGORIES.includes(category)) {
+    throw new Error(`Unknown category "${input.category}". Valid categories: ${MEMORY_CATEGORIES.join(", ")}`);
+  }
+  const key = (input.key ?? "").trim();
+  const value = (input.value ?? "").trim();
+  if (!key || !value) throw new Error("Both key and value are required.");
+
+  const sb = createServerClient();
+  // Mirrors services/supabase/athlete_memory_suggestions.py::insert_suggestions — skip if an
+  // identical fact is already pending review, rather than piling up duplicate rows.
+  const { data: existing } = await sb
+    .from("athlete_memory_suggestions")
+    .select("id")
+    .eq("user_id", uid).eq("status", "pending")
+    .eq("category", category).eq("key", key).eq("value", value)
+    .limit(1);
+  if (existing && existing.length > 0) {
+    return { queued: false, reason: "An identical suggestion is already pending review." };
+  }
+
+  const { error } = await sb.from("athlete_memory_suggestions").insert({
+    user_id: uid,
+    category,
+    key,
+    value,
+    source_note: sourceNote,
+  });
+  if (error) throw new Error(error.message);
+  return { queued: true };
+}
+
+export async function runChatTool(
+  name: string,
+  uid: string,
+  input: Record<string, unknown>,
+  sourceNote?: string,
+): Promise<unknown> {
   switch (name) {
     case "get_athlete_profile":
       return getAthleteProfile();
@@ -175,6 +242,8 @@ export async function runChatTool(name: string, uid: string, input: Record<strin
       return getCurrentWeekPlan(uid);
     case "get_nutrition_history":
       return getNutritionHistory(uid, input);
+    case "propose_memory_fact":
+      return proposeMemoryFact(uid, input, sourceNote ?? "");
     default:
       throw new Error(`Unknown tool: ${name}`);
   }

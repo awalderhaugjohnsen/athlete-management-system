@@ -130,11 +130,14 @@ export const dashboard = {
   },
   memorySuggestions: {
     title: "Save to your profile?",
-    fromNote: "From your last check-in note:",
+    fromNote: "From your note:",
     save: "Save",
     dismiss: "Dismiss",
     saving: "Saving…",
     errorFailed: "Failed to save",
+    modalIntro: "Your coach picked up on something from a recent note.",
+    closeForNow: "Not now",
+    setupSectionTitle: "Pending suggestions",
   },
   recentSessions: {
     title: "Recent Sessions",

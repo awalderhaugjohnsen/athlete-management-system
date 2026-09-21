@@ -126,11 +126,14 @@ export const dashboard = {
   },
   memorySuggestions: {
     title: "Lagre i profilen din?",
-    fromNote: "Fra notatet i din siste innsjekk:",
+    fromNote: "Fra notatet ditt:",
     save: "Lagre",
     dismiss: "Avvis",
     saving: "Lagrer…",
     errorFailed: "Kunne ikke lagre",
+    modalIntro: "Treneren din la merke til noe fra et nylig notat.",
+    closeForNow: "Ikke nå",
+    setupSectionTitle: "Ventende forslag",
   },
   recentSessions: {
     title: "Nylige økter",
