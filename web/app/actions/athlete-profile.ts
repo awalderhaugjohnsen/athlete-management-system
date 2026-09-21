@@ -32,6 +32,7 @@ export interface AthleteProfile {
   gym_access: boolean | null;
   equipment_notes: string;
   schedule_notes: string;
+  allow_multi_session_days: boolean;
   // Preferred sessions
   recurring_session_requests: RecurringSessionRequest[];
   // Health

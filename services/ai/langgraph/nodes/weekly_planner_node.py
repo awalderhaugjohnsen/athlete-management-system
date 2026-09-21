@@ -15,6 +15,7 @@ from services.ai.model_config import ModelSelector
 from services.ai.utils.retry_handler import AI_ANALYSIS_CONFIG, retry_with_backoff
 from services.garmin.training_paces import build_training_paces_context
 from services.scheduling.live_state import compute_checkin_fixed_days, resolve_today_pin
+from services.scheduling.muscle_groups import slot_muscle_groups
 from services.scheduling.solver import FREE, SLOTS, solve_schedule
 from services.supabase.athlete_profile import build_strength_templates_context, get_strength_session_templates
 from services.supabase.plan_writer import get_next_strength_slot
@@ -495,31 +496,9 @@ def _check_recurring_requests_honored(
     return warnings
 
 
-# Coarse muscle-group bucket per Garmin exercise category, used only to catch the specific
-# failure mode of two strength sessions on adjacent days both hitting the same broad region
-# (e.g. two upper-body days back-to-back) — not a precise anatomical model.
-_MUSCLE_GROUP_BUCKETS = {
-    "BENCH_PRESS": "upper", "FLYE": "upper", "PUSH_UP": "upper",
-    "ROW": "upper", "PULL_UP": "upper", "HYPEREXTENSION": "upper",
-    "SHOULDER_PRESS": "upper", "LATERAL_RAISE": "upper", "SHOULDER_STABILITY": "upper", "SHRUG": "upper",
-    "CURL": "upper", "TRICEPS_EXTENSION": "upper",
-    "SQUAT": "lower", "DEADLIFT": "lower", "LUNGE": "lower", "LEG_CURL": "lower",
-    "CALF_RAISE": "lower", "HIP_RAISE": "lower", "LEG_RAISE": "lower", "OLYMPIC_LIFT": "lower",
-    "CORE": "core", "CRUNCH": "core", "SIT_UP": "core", "PLANK": "core", "CHOP": "core",
-}
-
-
-def _slot_muscle_groups(templates: list[dict[str, Any]]) -> dict[str, set[str]]:
-    """Muscle-group buckets ('upper'/'lower'/'core') present in each strength session template
-    slot (a slot can have more than one, e.g. a slot combining legs + back + biceps is both
-    'lower' and 'upper'). Templates are fixed, so this is exact, not a best-effort guess.
-    """
-    by_slot: dict[str, set[str]] = {}
-    for row in templates:
-        bucket = _MUSCLE_GROUP_BUCKETS.get((row.get("garmin_category") or "").upper())
-        if bucket:
-            by_slot.setdefault(row["slot"], set()).add(bucket)
-    return by_slot
+# Real per-muscle-group tags (chest/back/delts/biceps/triceps/legs/calves/core), shared with
+# spec_bootstrap.py's deterministic SpacingConstraint generation — see muscle_groups.py.
+_slot_muscle_groups = slot_muscle_groups
 
 
 def _check_strength_recovery_spacing(
@@ -862,7 +841,7 @@ def _fix_legs_before_hard_runs(
     strength_by_date = {s["date"]: s for s in strength_sessions if s.get("date")}
 
     def is_leg_slot(slot: str | None) -> bool:
-        return bool(slot and "lower" in slot_groups.get(slot, set()))
+        return bool(slot and "legs" in slot_groups.get(slot, set()))
 
     sorted_strength_dates = sorted(strength_by_date.keys())
     true_slot_by_date: dict[str, str] = {}
@@ -1106,7 +1085,9 @@ async def _execute_checkin(
     today_pin = resolve_today_pin(today, today_row, today_strength_row, active_spec)
 
     valid_keys = [st.key for st in active_spec.session_types]
-    existing_summary = {d.isoformat(): row.get("session_type") for d, row in sorted(existing.items())}
+    existing_summary = {
+        d.isoformat(): row.get("session_type") for (d, _time_slot), row in sorted(existing.items())
+    }
 
     base_llm = ModelSelector.get_llm(AgentRole.WEEKLY_PLANNER)
     qa_messages = normalize_langchain_messages(state.get("weekly_planner_messages", []))
@@ -1175,16 +1156,21 @@ async def _execute_checkin(
     assert translation_output is not None  # set on every loop iteration or the else branch above
     assessment = translation_output.translation.assessment
 
-    fixed = compute_checkin_fixed_days(window_dates, existing, overrides, active_spec)
+    fixed, fixed_slots = compute_checkin_fixed_days(window_dates, existing, overrides, active_spec)
     fixed.update(today_pin)
-    result = solve_schedule(active_spec, window_dates, pinned_events=fixed)
+    result = solve_schedule(active_spec, window_dates, pinned_events=fixed, pinned_slot_events=fixed_slots)
 
     fallback_warning = None
     if not result.feasible:
         logger.warning("Check-in solve infeasible with overrides %s: %s", overrides, result.infeasible_reasons)
-        fixed_without_overrides = compute_checkin_fixed_days(window_dates, existing, {}, active_spec)
+        fixed_without_overrides, fixed_slots_without_overrides = compute_checkin_fixed_days(
+            window_dates, existing, {}, active_spec
+        )
         fixed_without_overrides.update(today_pin)
-        result = solve_schedule(active_spec, window_dates, pinned_events=fixed_without_overrides)
+        result = solve_schedule(
+            active_spec, window_dates,
+            pinned_events=fixed_without_overrides, pinned_slot_events=fixed_slots_without_overrides,
+        )
         if not result.feasible:
             raise ValueError(
                 "The athlete's active program is infeasible independent of this check-in "
@@ -1194,6 +1180,7 @@ async def _execute_checkin(
         fallback_warning = template.format(reasons="; ".join(result.infeasible_reasons or []))
         overrides = {}
         fixed = fixed_without_overrides
+        fixed_slots = fixed_slots_without_overrides
 
     # Normalize both solver modes into one (date, time_slot) -> key shape so the rest of this
     # function only has to handle one shape. Single-session mode's plain dict[date, str] becomes
@@ -1215,7 +1202,7 @@ async def _execute_checkin(
     content_needed = [
         cell for cell, key in cell_assignments.items()
         if key and key != FREE
-        and cell[0] not in fixed
+        and cell[0] not in fixed and cell not in fixed_slots
         and active_spec.session_type(key).session_kind == "run"
     ]
     content_needed.sort(key=lambda cell: (cell[0], _slot_sort_key(cell[1])))
@@ -1291,11 +1278,7 @@ async def _execute_checkin(
                     "is_key_session": st.is_key, "is_rest": False, "time_slot": row_slot,
                 })
             elif st.session_kind == "run":
-                # existing.get(d) is still date-only (not slot-aware — a deferred, flagged gap:
-                # if a date has two existing run rows this fallback can't tell them apart), which
-                # only matters when fresh content is missing for a date that already had multiple
-                # committed run sessions before this check-in.
-                existing_row = existing.get(d)
+                existing_row = existing.get((d, row_slot))
                 segments = running_content_by_cell.get(cell)
                 if segments is None and existing_row and existing_row.get("running_segments"):
                     segments = existing_row["running_segments"]

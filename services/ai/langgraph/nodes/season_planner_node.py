@@ -22,7 +22,11 @@ from services.scheduling.spec_bootstrap import (
     build_deterministic_session_types,
     build_deterministic_weekly_targets,
 )
-from services.supabase.athlete_profile import get_recurring_session_requests, get_strength_session_templates
+from services.supabase.athlete_profile import (
+    get_allow_multi_session_days,
+    get_recurring_session_requests,
+    get_strength_session_templates,
+)
 from services.supabase.program_specs import fetch_checkin_context, write_active_program_spec
 
 from .node_base import (
@@ -223,6 +227,7 @@ async def author_feasible_spec(
     max_check_weeks: int,
     pinned_events_for: Callable[[ProgramSpec], dict[date, str]] = lambda spec: {},
     max_attempts: int = MAX_SPEC_FEASIBILITY_ATTEMPTS,
+    allow_multi_session_days: bool = False,
 ) -> tuple[SeasonPlannerOutput, ProgramSpec | None]:
     """Calls author_fn(feedback) up to max_attempts times, assembling and feasibility-checking a
     ProgramSpec from each attempt's draft, feeding corrective feedback (a Pydantic validation
@@ -262,6 +267,7 @@ async def author_feasible_spec(
                 progression_schemes=draft.progression_schemes,
                 rest_policy=draft.rest_policy,
                 horizon_weeks=draft.horizon_weeks,
+                allow_multi_session_days=allow_multi_session_days,
             )
         except ValidationError as exc:
             last_reasons = [str(exc)]
@@ -340,6 +346,7 @@ async def season_planner_node(state: TrainingAnalysisState) -> dict[str, list | 
 
     strength_templates = get_strength_session_templates(supabase_user_id)
     recurring_requests = get_recurring_session_requests(supabase_user_id)
+    allow_multi_session_days = get_allow_multi_session_days(supabase_user_id)
     deterministic_types = build_deterministic_session_types(strength_templates)
     deterministic_targets, mismatch_note = build_deterministic_weekly_targets(
         deterministic_types, recurring_requests
@@ -427,6 +434,7 @@ async def season_planner_node(state: TrainingAnalysisState) -> dict[str, list | 
             current_date=state["current_date"],
             max_check_weeks=SPEC_FEASIBILITY_CHECK_MAX_WEEKS,
             pinned_events_for=lambda s: resolve_today_pin(date.today(), today_row, today_strength_row, s) if today_row else {},
+            allow_multi_session_days=allow_multi_session_days,
         )
 
         if spec is not None:

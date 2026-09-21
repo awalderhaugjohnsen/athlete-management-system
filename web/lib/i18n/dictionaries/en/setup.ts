@@ -171,6 +171,11 @@ export const setup = {
     constraintsLabel: "Schedule constraints",
     constraintsHint: "Work hours, commute, travel, family — anything that limits flexibility.",
     constraintsPlaceholder: "e.g. Office 8-17 Mon-Fri, can train before work (06:00) or evenings.",
+    multiSessionDaysLabel: "More than one session per day",
+    multiSessionDaysOptions: {
+      yes: { label: "Yes — allow it", desc: "The coach can place more than one session on the same day (e.g. morning strength, evening run) when it makes sense." },
+      no: { label: "No — one session per day", desc: "Keep exactly one session per calendar day, same as today." },
+    },
   },
 
   preferredSessions: {

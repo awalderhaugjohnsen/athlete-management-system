@@ -189,7 +189,11 @@ def _solve_single_session_per_day(
         return day_vars[d][key]
 
     def category_indicator(d: date, category: str):
-        keys = [k for k in type_keys if category_of[k] == category]
+        """category_of[k] is a list of tags a session type carries — a session type
+        counts toward `category` if it's a member, not an exact match, since one
+        session (e.g. a strength slot touching chest AND legs) can carry several.
+        """
+        keys = [k for k in type_keys if category in category_of[k]]
         if not keys:
             return 0
         if d in fixed:
@@ -227,7 +231,7 @@ def _solve_single_session_per_day(
                 add_gated(-total, -wt.min_per_week, f"weekly_target:{wt.session_type_key}:min>={wt.min_per_week} week-of-{monday}")
 
             if spec.rest_policy.min_rest_days_per_week > 0:
-                rest_total = sum(category_indicator(d, category_of[k]) for d in week_dates for k in rest_keys) if rest_keys else 0
+                rest_total = sum(type_indicator(d, k) for d in week_dates for k in rest_keys) if rest_keys else 0
                 add_gated(
                     -rest_total,
                     -spec.rest_policy.min_rest_days_per_week,
@@ -351,7 +355,7 @@ def _solve_multi_session_per_day(
         return cell_vars[cell][key]
 
     def cell_category_indicator(cell: tuple[date, str], category: str):
-        keys = [k for k in type_keys if category_of[k] == category]
+        keys = [k for k in type_keys if category in category_of[k]]
         if not keys:
             return 0
         d, _slot = cell

@@ -13,25 +13,12 @@ under (Phase 3+4: wiring ProgramSpec + the solver into the live pipeline).
 """
 from __future__ import annotations
 
+from services.scheduling.muscle_groups import slot_muscle_groups
 from services.scheduling.program_spec import (
     ProgramSessionType,
     SpacingConstraint,
     WeeklyTarget,
 )
-
-# garmin_category values that count as leg work, for deciding which strength
-# slots carry legs — confirmed by querying strength_session_templates directly
-# (see memory project_leg_spacing_structural_limit). Never infer this from slot
-# names or recurring_session_requests description text; both have been wrong.
-LEG_GARMIN_CATEGORIES = {"SQUAT", "LUNGE", "HIP_RAISE", "DEADLIFT", "CALF_RAISE"}
-
-
-def _slot_carries_legs(templates: list[dict], slot: str) -> bool:
-    return any(
-        (row.get("garmin_category") or "").upper() in LEG_GARMIN_CATEGORIES
-        for row in templates
-        if row.get("slot") == slot
-    )
 
 
 def build_deterministic_session_types(
@@ -39,9 +26,11 @@ def build_deterministic_session_types(
 ) -> list[ProgramSessionType]:
     """One ProgramSessionType per real strength slot (A/B/C, ...).
 
-    Category is 'leg-strength' or 'upper-strength' depending on whether the
-    slot's saved template includes any leg-carrying exercise. Every real
-    strength session is treated as key — confirmed against live
+    category is the real set of muscle groups the slot's saved template
+    exercises touch (see services/scheduling/muscle_groups.py) — a slot
+    commonly touches more than one (e.g. bench press + squat = chest + legs),
+    which is exactly why category became list-valued. Every real strength
+    session is treated as key — confirmed against live
     scheduled_days.is_key_session data (see scripts/bootstrap_program_spec.py's
     original comment on this). Never LLM-authored: this is real saved athlete
     data, not a periodization choice.
@@ -52,14 +41,15 @@ def build_deterministic_session_types(
         if slot and slot not in slots:
             slots[slot] = row
 
+    groups_by_slot = slot_muscle_groups(strength_templates)
+
     session_types: list[ProgramSessionType] = []
     for slot in sorted(slots):
         slot_name = slots[slot].get("slot_name") or f"Strength {slot}"
-        category = "leg-strength" if _slot_carries_legs(strength_templates, slot) else "upper-strength"
         session_types.append(
             ProgramSessionType(
                 key=f"strength-{slot.lower()}",
-                category=category,
+                category=sorted(groups_by_slot.get(slot, set())),
                 label=slot_name,
                 session_kind="strength",
                 is_key=True,
@@ -132,10 +122,12 @@ def build_deterministic_leg_spacing_constraint(min_gap_hours: int = 24) -> Spaci
 
     Contract: the season planner must label any hard/key run session type it
     authors with category 'key-run' for this constraint to actually bind —
-    stated explicitly in the season-planner prompt.
+    stated explicitly in the season-planner prompt. 'legs' matches the muscle
+    group tag build_deterministic_session_types assigns via
+    services/scheduling/muscle_groups.py.
     """
     return SpacingConstraint(
-        from_category="leg-strength",
+        from_category="legs",
         to_category="key-run",
         min_gap_hours=min_gap_hours,
         direction="before",
@@ -144,24 +136,34 @@ def build_deterministic_leg_spacing_constraint(min_gap_hours: int = 24) -> Spaci
 
 def build_deterministic_recovery_spacing_constraints(
     session_types: list[ProgramSessionType],
-    min_gap_hours: int = 24,
+    min_gap_hours: int = 48,
 ) -> list[SpacingConstraint]:
-    """Generalizes _check_strength_recovery_spacing into structural ProgramSpec data.
+    """One 'either'-direction SpacingConstraint per real muscle-group tag present
+    across strength session types (including a tag against itself), so two
+    sessions that both touch the same muscle group can't land on adjacent
+    calendar days — e.g. chest can't follow chest, but a chest+legs session
+    followed by a pure-back session is fine, since they share no tag.
 
-    weekly_planner_node.py's _check_strength_recovery_spacing is a general
-    same-muscle-bucket adjacency check across ALL strength categories,
-    broader than just leg-before-key-run. Every real strength slot includes
-    bench-press/upper-body work by design
-    (the "bench every session" split), so a plain leg/upper category split
-    still under-represents true muscle overlap — the practical, safe
-    generalization is one 'either'-direction constraint per unordered pair of
-    strength categories present (including a category against itself), which
-    is equivalent to "no two strength sessions of any kind on adjacent
-    calendar days" given that every slot shares upper-body content. This makes
-    the old check fully redundant for any spec built this way; it's kept in
-    weekly_planner_node.py as defense-in-depth for the non-check-in path only.
+    48h, not 24h: solver.py's day-granularity math (_gap_hours = calendar-day-
+    difference * 24) makes any spacing_constraint at or under 24h a no-op for
+    two different dates under the single-session-per-day model — any two
+    different dates are already >=24h apart by construction, and same-day
+    placement of two different session types is already impossible regardless.
+    48h is the actual floor that binds: it blocks two adjacent calendar days
+    (a 1-day gap = 24h, which is < 48h) while a normal >=2-days-apart cadence
+    (e.g. Mon/Wed/Fri) is untouched (each pair is already >=48h apart).
+
+    Generalizes weekly_planner_node.py's _check_strength_recovery_spacing
+    (a same-bucket-adjacency warning) into a real, solver-enforced constraint,
+    now with real per-muscle-group tags (see muscle_groups.py) instead of a
+    coarse leg/upper split — replacing the old binary entirely, since a
+    blanket "any two strength sessions" rule would re-introduce exactly the
+    over-restriction this finer tagging exists to avoid (upper body doesn't
+    need a blanket separation, only a shared muscle group does).
     """
-    strength_categories = sorted({st.category for st in session_types if st.session_kind == "strength"})
+    strength_categories = sorted({
+        c for st in session_types if st.session_kind == "strength" for c in st.category
+    })
     return [
         SpacingConstraint(
             from_category=cat_a,

@@ -57,7 +57,7 @@ class TestSpecAssemblyFromDraftPlusDeterministic:
 
     def _deterministic_types(self):
         return [
-            ProgramSessionType(key="strength-a", category="leg-strength", label="A", session_kind="strength", is_key=True),
+            ProgramSessionType(key="strength-a", category=["leg-strength"], label="A", session_kind="strength", is_key=True),
         ]
 
     def test_valid_draft_assembles_cleanly(self):
@@ -72,7 +72,7 @@ class TestSpecAssemblyFromDraftPlusDeterministic:
             ProgramSessionType(**nt.model_dump()) for nt in draft.new_session_types
         ]
         spec = ProgramSpec(session_types=session_types, weekly_targets=draft.weekly_targets)
-        assert spec.session_type("tempo-run").category == "key-run"
+        assert spec.session_type("tempo-run").category == ["key-run"]
 
     def test_weekly_target_referencing_unknown_key_raises(self):
         deterministic_types = self._deterministic_types()
@@ -96,3 +96,35 @@ class TestSpecAssemblyFromDraftPlusDeterministic:
         )
         with pytest.raises(ValidationError):
             ProgramSpec(session_types=deterministic_types, spacing_constraints=draft.spacing_constraints)
+
+
+class TestProgramSessionTypeCategoryBackwardCompat:
+    """category became list-valued so a session type can carry more than one muscle-group tag
+    (see services/scheduling/muscle_groups.py) — a bare string must still parse, so a
+    program_specs row stored before this change doesn't fail to load on the next read.
+    """
+
+    def test_bare_string_wraps_into_single_item_list(self):
+        st = ProgramSessionType(
+            key="strength-a", category=["leg-strength"], label="A", session_kind="strength",
+        )
+        assert st.category == ["leg-strength"]
+
+    def test_real_list_passes_through_unchanged(self):
+        st = ProgramSessionType(
+            key="strength-a", category=["chest", "legs"], label="A", session_kind="strength",
+        )
+        assert st.category == ["chest", "legs"]
+
+    def test_spacing_constraint_matches_either_tag_in_a_multi_tag_session_type(self):
+        from services.scheduling.program_spec import SpacingConstraint
+
+        spec = ProgramSpec(
+            session_types=[
+                ProgramSessionType(key="strength-a", category=["chest", "legs"], label="A", session_kind="strength"),
+            ],
+            spacing_constraints=[
+                SpacingConstraint(from_category="chest", to_category="chest", min_gap_hours=48, direction="either"),
+            ],
+        )
+        assert spec.session_type("strength-a").category == ["chest", "legs"]

@@ -19,7 +19,7 @@ from services.ai.langgraph.schemas.program_spec_outputs import (
 from services.scheduling.program_spec import ProgramSessionType, SpacingConstraint, WeeklyTarget
 
 DETERMINISTIC_TYPES = [
-    ProgramSessionType(key="strength-a", category="leg-strength", label="A", session_kind="strength", is_key=True),
+    ProgramSessionType(key="strength-a", category=["leg-strength"], label="A", session_kind="strength", is_key=True),
 ]
 LEG_SPACING = SpacingConstraint(from_category="leg-strength", to_category="key-run", min_gap_hours=48)
 CURRENT_DATE = {"date": "2026-08-24", "day_name": "Monday"}  # a Monday, for a clean full week
@@ -61,6 +61,43 @@ class TestFeasibleOnFirstAttempt:
         assert spec is not None
         assert len(calls) == 1
         assert calls[0] is None  # no feedback on the first attempt
+
+
+class TestAllowMultiSessionDaysThreadsThrough:
+    @pytest.mark.asyncio
+    async def test_defaults_false(self):
+        async def author_fn(feedback):
+            return _output(SeasonProgramSpecDraft(new_session_types=[TEMPO_RUN_TYPE], spec_rationale="r"))
+
+        _agent_output, spec = await author_feasible_spec(
+            author_fn,
+            deterministic_types=DETERMINISTIC_TYPES,
+            deterministic_targets=[],
+            leg_spacing_constraint=LEG_SPACING,
+            recovery_spacing_constraints=[],
+            current_date=CURRENT_DATE,
+            max_check_weeks=1,
+        )
+        assert spec is not None
+        assert spec.allow_multi_session_days is False
+
+    @pytest.mark.asyncio
+    async def test_true_when_athlete_opted_in(self):
+        async def author_fn(feedback):
+            return _output(SeasonProgramSpecDraft(new_session_types=[TEMPO_RUN_TYPE], spec_rationale="r"))
+
+        _agent_output, spec = await author_feasible_spec(
+            author_fn,
+            deterministic_types=DETERMINISTIC_TYPES,
+            deterministic_targets=[],
+            leg_spacing_constraint=LEG_SPACING,
+            recovery_spacing_constraints=[],
+            current_date=CURRENT_DATE,
+            max_check_weeks=1,
+            allow_multi_session_days=True,
+        )
+        assert spec is not None
+        assert spec.allow_multi_session_days is True
 
 
 class TestHitlQuestionsShortCircuit:
