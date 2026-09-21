@@ -324,6 +324,16 @@ async def run_analysis_from_config(config_path: Path, user_comment: str | None =
     recurring_session_requests = config_parser.get_recurring_session_requests()
     if user_comment:
         logger.info("User note for new season: %s", user_comment[:120])
+        supabase_user_id = os.environ.get("SUPABASE_USER_ID")
+        if supabase_user_id:
+            try:
+                known_memory = get_athlete_memory(supabase_user_id)
+                candidates = await extract_memory_candidates(user_comment, known_memory)
+                if candidates:
+                    logger.info("Extracted %d memory candidate(s) for review", len(candidates))
+                    insert_suggestions(supabase_user_id, candidates, source_note=user_comment)
+            except Exception:
+                logger.exception("Memory suggestion extraction failed — continuing season plan")
         planning_context = f"{planning_context.rstrip()}\n\n## Athlete Note\n{user_comment.strip()}"
     extraction_settings = config_parser.get_extraction_config()
 

@@ -15,8 +15,6 @@ import type { DayData } from "./SessionDetailModal";
 import { FitnessTrendChart } from "./FitnessTrendChart";
 import { getAthleteProfile } from "@/app/actions/athlete-profile";
 import { getReplanJobs } from "@/app/actions/replan";
-import { getPendingMemorySuggestions } from "@/app/actions/memory-suggestions";
-import { MemorySuggestionsCard } from "./MemorySuggestionsCard";
 import { RefreshDataButton } from "./RefreshDataButton";
 import type { TrendSeries } from "./report/ProgressTabs";
 import { GoalProgressGrid } from "./GoalProgressGrid";
@@ -75,7 +73,7 @@ export default async function DashboardPage() {
   const calWindowStart = new Date(todayDateObj.getFullYear(), todayDateObj.getMonth() - 1, 1).toISOString().slice(0, 10);
   const calWindowEnd = new Date(todayDateObj.getFullYear(), todayDateObj.getMonth() + 2, 0).toISOString().slice(0, 10);
 
-  const [dayRes, weekRes, weekSessRes, nextKeyRes, metricsRes, lastCheckinRes, athleteProfile, completedSetsRes, completedActivitiesRes, firstName, fitnessTrendRes, calDaysRes, calStrengthRes, weekMacrosRes, sicknessRes, replanJobs, benchRes, raceHistoryRes, pendingMemorySuggestions] = await Promise.all([
+  const [dayRes, weekRes, weekSessRes, nextKeyRes, metricsRes, lastCheckinRes, athleteProfile, completedSetsRes, completedActivitiesRes, firstName, fitnessTrendRes, calDaysRes, calStrengthRes, weekMacrosRes, sicknessRes, replanJobs, benchRes, raceHistoryRes] = await Promise.all([
     planId
       ? sb.from("scheduled_days").select("*").eq("user_id", uid).eq("plan_id", planId).eq("date", today).limit(1)
       : Promise.resolve({ data: [] }),
@@ -117,7 +115,6 @@ export default async function DashboardPage() {
     // per distance instead of one point per weekly check-in.
     sb.from("daily_metrics").select("date, predicted_5k_secs, predicted_10k_secs, predicted_half_marathon_secs, predicted_marathon_secs")
       .eq("user_id", uid).gte("date", raceHistoryStart).order("date", { ascending: true }),
-    getPendingMemorySuggestions(),
   ]);
 
   const completedActivities: CompletedActivity[] = completedActivitiesRes.data ?? [];
@@ -447,7 +444,6 @@ export default async function DashboardPage() {
         seasonEnded={seasonEnded}
         planEndDate={plan ? formatShort(plan.end_date, language) : ""}
       />
-      <MemorySuggestionsCard suggestions={pendingMemorySuggestions} />
 
       {/* ── Goals ────────────────────────────────────────────────────────── */}
       {hasGoals && (

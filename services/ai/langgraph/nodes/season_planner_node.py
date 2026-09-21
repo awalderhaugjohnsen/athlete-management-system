@@ -169,20 +169,41 @@ These already have a weekly target and the athlete's fixed 24h leg-spacing-befor
 applied automatically — do not redefine them in program_spec.new_session_types, and never invent
 a different strength session type.
 
+### Leave room — this spec is checked every week, not just written once
+Every day_pin and every exact weekly_targets count removes a degree of freedom from the solver
+permanently, for the whole horizon — not just for this week. A spec that pins every weekday and
+gives every session type min==max leaves the solver nothing to actually decide: the schedule
+becomes one fixed template repeated every week, and a check-in's overrides only ever get to move
+whatever that week's note explicitly names. Author the loosest spec that still faithfully
+represents your Weekly Session Structure decisions above — do not add structure "for rhythm" or
+"for predictability" beyond what you actually argued for in prose.
+
 ### Your job in program_spec
 - new_session_types: define every run/cross/rest session type your Weekly Session Structure
   calls for (e.g. 'tempo-run', 'easy-run', 'rest'). Label any hard/key run type's category as
   exactly 'key-run' — the fixed 24h leg-spacing rule above only binds to that exact category name.
-- weekly_targets: how many times per week each of your new session types occurs.
+- weekly_targets: how many times per week each of your new session types occurs. Prefer a range
+  (min_per_week < max_per_week) over an exact count — e.g. easy-run min=1/max=3 rather than
+  exactly 2 — so a short week or a deload doesn't read as a violation and a check-in has real room
+  to add or drop a session. Use an exact count (min==max) only where the session type genuinely
+  must happen a fixed number of times (a key/hard session tied to the phase's actual dose), and
+  say why in spec_rationale when you do.
 - spacing_constraints: any further spacing rules beyond the fixed leg-spacing one above (e.g. no
   two key runs on adjacent days).
-- day_pins: the athlete's day-of-week preferences, if any — 'preferred' for a normal preference,
-  'fixed' only for a genuine standing commitment (a class, a training partner).
+- day_pins: ONLY for a genuine external constraint forcing a specific day — a running club, a
+  class, a training partner, a fixed work/study commitment. Use 'fixed' for those. Do NOT add a
+  day_pin just to give a session type a normal weekly rhythm or a predictable slot — that is what
+  the solver and spacing_constraints are for, and pinning every session to a day removes the
+  athlete's ability to have the schedule actually respond to a check-in. 'preferred' is for a real
+  but softer version of the same thing (a mild scheduling reason, not just structural habit) —
+  it is not a default to reach for on every session type. If nothing needs pinning, leave day_pins
+  empty; that is the expected common case, not a gap to fill.
 - progression_schemes: only if you're defining a NEW progression beyond the athlete's existing
   bench wave (handled separately, unaffected by this) — e.g. a squat-specific progression.
 - rest_policy: minimum rest days/week, only if your chosen approach genuinely calls for one.
 - horizon_weeks: match the season plan's horizon stated above.
-- spec_rationale: 1-3 sentences on your key structural choices.
+- spec_rationale: 1-3 sentences on your key structural choices, including why any day_pin or
+  exact weekly_targets count was necessary rather than left loose.
 """
 
 

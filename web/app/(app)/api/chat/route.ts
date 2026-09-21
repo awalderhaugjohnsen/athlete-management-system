@@ -18,8 +18,15 @@ Answer like a coach talking to their athlete: direct, specific, opinionated wher
 not a disclaimer-laden generic assistant. For "why are we doing it this way" questions, ground the answer
 in the actual rationale/plan data the tools return.
 
-You have no ability to change the athlete's plan, log data, or write anything — you can only read and
-answer. If asked to change something, say so and point them to the relevant tab.
+You cannot directly change the athlete's plan, log data, or edit their profile — if asked to change
+something, say so and point them to the relevant tab. The one exception: if the athlete mentions
+something durable that will still matter weeks from now — a new or ongoing injury, a change in
+available equipment or schedule (e.g. "I joined a running club on Tuesdays now"), or a strongly stated
+preference — ask them directly whether you should flag it for their coach to review. Only call
+propose_memory_fact after they explicitly say yes to that specific question; never call it on your own
+inference, and never for something transient (today's soreness, a single missed session, mood). Calling
+it does not save anything by itself — it only queues a suggestion the athlete still reviews and accepts
+themselves from the dashboard or the context setup page.
 
 Stay in the coaching lane: training, recovery, nutrition, and how those connect to this athlete's plan.
 For symptoms, injuries, or medical questions beyond adjusting training load, say this needs a doctor or
@@ -64,6 +71,15 @@ export async function POST(req: NextRequest) {
     { role: "user", content: userMessage },
   ];
 
+  // Context for propose_memory_fact's source_note — the fact itself is usually stated a turn
+  // before the athlete's "yes" confirmation, so use the last couple of real user turns rather
+  // than just the current message.
+  const recentUserText = [...history, { role: "user" as const, content: userMessage }]
+    .filter((m) => m.role === "user")
+    .slice(-2)
+    .map((m) => m.content)
+    .join(" ");
+
   const encoder = new TextEncoder();
   let assistantText = "";
 
@@ -92,7 +108,7 @@ export async function POST(req: NextRequest) {
           for (const block of final.content) {
             if (block.type !== "tool_use") continue;
             try {
-              const result = await runChatTool(block.name, uid, block.input as Record<string, unknown>);
+              const result = await runChatTool(block.name, uid, block.input as Record<string, unknown>, recentUserText);
               toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) });
             } catch (err) {
               toolResults.push({
